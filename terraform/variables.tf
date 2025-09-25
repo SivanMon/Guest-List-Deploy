@@ -1,68 +1,56 @@
 # variables.tf
 # Environment variables for flexible deployment
 
-variable "aws_region" {
-  description = "AWS region for deployment"
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "cluster_name" {
-  description = "Name of the EKS cluster"
-  type        = string
-  default     = "guestlist-cluster"
-}
-
 variable "environment" {
-  description = "Environment name (dev, staging, prod)"
+  description = "Environment name (sivan, dvir, dev, stage, prod)"
   type        = string
   default     = "dev"
 }
 
-variable "vpc_cidr" {
-  description = "CIDR block for VPC"
+variable "app_name" {
+  description = "Application name for resource naming"
   type        = string
-  default     = "10.0.0.0/16"
+  default     = "guest-list"
+}
+
+variable "aws_region" {
+  description = "AWS region for deployment"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "cluster_version" {
+  description = "EKS cluster Kubernetes version"
+  type        = string
+  default     = "1.28"
 }
 
 variable "node_instance_type" {
   description = "EC2 instance type for worker nodes"
   type        = string
-  default     = "t3.small" # Cost-optimized
+  default     = "t3.small"
 }
 
-variable "node_desired_capacity" {
-  description = "Desired number of worker nodes"
-  type        = number
-  default     = 2 # Minimal for cost
-}
-
-variable "node_max_capacity" {
-  description = "Maximum number of worker nodes"
-  type        = number
-  default     = 3
-}
-
-variable "node_min_capacity" {
+variable "min_size" {
   description = "Minimum number of worker nodes"
   type        = number
   default     = 1
 }
 
-variable "app_image" {
-  description = "Docker image for the guest list application"
-  type        = string
-  default     = "giligalili/guestlistapi:ver04"
-}
-
-variable "app_replicas" {
-  description = "Number of application replicas"
+variable "max_size" {
+  description = "Maximum number of worker nodes"
   type        = number
   default     = 3
 }
 
-variable "student_name" {
-  description = "Student name for resource tagging"
-  type        = string
-  default     = "devsecops-student"
+variable "desired_size" {
+  description = "Desired number of worker nodes"
+  type        = number
+  default     = 2
+}
+
+variable "tags" {
+  description = "Tags to apply to resources"
+  type        = map(string)
+  default     = {}
 }
