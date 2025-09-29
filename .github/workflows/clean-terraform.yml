@@ -42,10 +42,12 @@ jobs:
         id: setvars
         shell: bash
         env:
-          EVENT_NAME: ${{ github.event_name }}
+          EVENT_NAME:   ${{ github.event_name }}
           DISPATCH_ENV: ${{ github.event.client_payload.environment }}
-          INPUT_ENV: ${{ inputs.environment }}
-          AWS_REGION: ${{ env.AWS_REGION }}
+          INPUT_ENV:    ${{ inputs.environment }}
+          AWS_REGION:   ${{ env.AWS_REGION }}
+          REPO_OWNER:   ${{ github.repository_owner }}
+          REPO:         ${{ github.repository }}   # e.g. SivanMon/Guest-List-Deploy
         run: |
           set -euo pipefail
 
@@ -58,12 +60,15 @@ jobs:
 
           NAMESPACE="guestlist"
 
-          # 2) ONE unique bucket for all envs in THIS AWS account + region
-          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
-          REGION="${AWS_REGION:-us-east-1}"
-          TF_STATE_BUCKET="guestlist-tfstate-${ACCOUNT_ID}-${REGION}"
+          # 2) Globally-unique bucket use owner+repo
+          owner="$(echo "${REPO_OWNER}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')"
+          repo="$(echo "${REPO#*/}"  | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')"
+          bucket="guestlist-tfstate-${owner}-${repo}"
+          bucket="${bucket:0:63}"               # S3 bucket length limit
+          bucket="${bucket%-}"                  # strip trailing '-'
+          TF_STATE_BUCKET="${bucket}"
 
-          # Keep per-environment separation in the KEY
+          # Per-environment key
           TF_STATE_KEY="envs/${ENVIRONMENT}/terraform.tfstate"
 
           # 3) Image repo + tag prefix
@@ -75,7 +80,6 @@ jobs:
             *)                      IMAGE_TAG_PREFIX="dev" ;;
           esac
 
-          # Expose as step outputs
           {
             echo "environment=${ENVIRONMENT}"
             echo "namespace=${NAMESPACE}"
@@ -85,9 +89,9 @@ jobs:
             echo "image_tag_prefix=${IMAGE_TAG_PREFIX}"
           } >> "$GITHUB_OUTPUT"
 
+          # Export to job env so downstream steps that rely on env vars keep working
           echo "TF_STATE_BUCKET=${TF_STATE_BUCKET}" >> "$GITHUB_ENV"
           echo "TF_STATE_KEY=${TF_STATE_KEY}"       >> "$GITHUB_ENV"
-
 
       - name: Show resolved values
         run: |
@@ -116,27 +120,27 @@ jobs:
 
       - name: Ensure S3 state bucket exists (idempotent)
         shell: bash
+        env:
+          B: ${{ env.TF_STATE_BUCKET }}   # comes from job env set earlier (or from needs.outputs if you set it there)
+          R: ${{ env.AWS_REGION }}
         run: |
           set -euo pipefail
-          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
-          TF_STATE_BUCKET="guestlist-tfstate-${ACCOUNT_ID}-${AWS_REGION}"
-          export TF_STATE_BUCKET
-          B="${TF_STATE_BUCKET}"
-          R="${AWS_REGION}"
+          echo "Ensuring bucket: ${B} in region: ${R}"
 
-          if aws s3api head-bucket --bucket "$B" 2>/dev/null; then
-            echo "Bucket $B exists."
+          if aws s3api head-bucket --bucket "${B}" 2>/dev/null; then
+            echo "Bucket ${B} exists."
           else
-            if [[ "$R" == "us-east-1" ]]; then
-              aws s3api create-bucket --bucket "$B"
+            if [[ "${R}" == "us-east-1" ]]; then
+              aws s3api create-bucket --bucket "${B}"
             else
-              aws s3api create-bucket --bucket "$B" --create-bucket-configuration LocationConstraint="$R"
+              aws s3api create-bucket --bucket "${B}" \
+                --create-bucket-configuration LocationConstraint="${R}"
             fi
-            aws s3api put-bucket-versioning --bucket "$B" --versioning-configuration Status=Enabled
-            aws s3api put-bucket-encryption --bucket "$B" --server-side-encryption-configuration '{
-              "Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-            aws s3api put-public-access-block --bucket "$B" --public-access-block-configuration \
-              BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+            aws s3api put-bucket-versioning --bucket "${B}" --versioning-configuration Status=Enabled
+            aws s3api put-bucket-encryption --bucket "${B}" \
+              --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+            aws s3api put-public-access-block --bucket "${B}" \
+              --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
           fi
 
       - name: Ensure DynamoDB lock table exists (idempotent)
