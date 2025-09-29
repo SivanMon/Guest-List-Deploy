@@ -45,48 +45,37 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           DISPATCH_ENV: ${{ github.event.client_payload.environment }}
           INPUT_ENV: ${{ inputs.environment }}
+          AWS_REGION: ${{ env.AWS_REGION }}
         run: |
           set -euo pipefail
 
-          # 1) ENV resolution
-          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_NAME}" == "main" ]]; then
-            ENVIRONMENT="main"
+          # 1) Resolve environment
+          if [[ "${EVENT_NAME}" == "repository_dispatch" && -n "${DISPATCH_ENV:-}" ]]; then
+            ENVIRONMENT="${DISPATCH_ENV}"
           else
-            # From manual picker
-            ENVIRONMENT="${{ github.event.inputs.environment || '' }}"
-            if [[ -z "${ENVIRONMENT}" ]]; then ENVIRONMENT="dev"; fi
+            ENVIRONMENT="${INPUT_ENV:-dev}"
           fi
 
           NAMESPACE="guestlist"
 
-          # 2) State bucket/key: students use "-feature" suffix
-          case "${ENVIRONMENT}" in
-            sivan|dvir|sahar|gili)
-              TF_STATE_BUCKET="guestlist-tfstate-${ENVIRONMENT}-feature"
-              ;;
-            *)
-              TF_STATE_BUCKET="guestlist-tfstate-${ENVIRONMENT}"
-              ;;
-          esac
+          # 2) ONE unique bucket for all envs in THIS AWS account + region
+          ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          REGION="${AWS_REGION:-us-east-1}"
+          TF_STATE_BUCKET="guestlist-tfstate-${ACCOUNT_ID}-${REGION}"
+
+          # Keep per-environment separation in the KEY
           TF_STATE_KEY="envs/${ENVIRONMENT}/terraform.tfstate"
 
-          # 3) Image repo + tag prefix (students: prefix for latest feature tag; envs: fixed tags)
+          # 3) Image repo + tag prefix
           IMAGE_REPO="sivanmonshi/guestlistapi"
           case "${ENVIRONMENT}" in
-            sivan|dvir|sahar|gili)
-              IMAGE_TAG_PREFIX="${ENVIRONMENT}-feature-"
-              ;;
-            dev)
-              IMAGE_TAG_PREFIX="dev"
-              ;;
-            main)
-              IMAGE_TAG_PREFIX="latest"
-              ;;
-            *)
-              IMAGE_TAG_PREFIX="dev"
-              ;;
+            sivan|dvir|sahar|gili) IMAGE_TAG_PREFIX="${ENVIRONMENT}-feature-" ;;
+            dev)                    IMAGE_TAG_PREFIX="dev" ;;
+            main)                   IMAGE_TAG_PREFIX="latest" ;;
+            *)                      IMAGE_TAG_PREFIX="dev" ;;
           esac
 
+          # Expose as step outputs
           {
             echo "environment=${ENVIRONMENT}"
             echo "namespace=${NAMESPACE}"
@@ -96,13 +85,9 @@ jobs:
             echo "image_tag_prefix=${IMAGE_TAG_PREFIX}"
           } >> "$GITHUB_OUTPUT"
 
-          set -euo pipefail
-          if [[ "${EVENT_NAME}" == "repository_dispatch" && -n "${DISPATCH_ENV:-}" ]]; then
-            ENVIRONMENT="${DISPATCH_ENV}"
-          else
-            ENVIRONMENT="${INPUT_ENV:-dev}"
-          fi
-          echo "environment=${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
+          echo "TF_STATE_BUCKET=${TF_STATE_BUCKET}" >> "$GITHUB_ENV"
+          echo "TF_STATE_KEY=${TF_STATE_KEY}"       >> "$GITHUB_ENV"
+
 
       - name: Show resolved values
         run: |
@@ -136,7 +121,6 @@ jobs:
           ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
           TF_STATE_BUCKET="guestlist-tfstate-${ACCOUNT_ID}-${AWS_REGION}"
           export TF_STATE_BUCKET
-          
           B="${TF_STATE_BUCKET}"
           R="${AWS_REGION}"
 
