@@ -133,12 +133,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          B="${TF_STATE_BUCKET}"
-          R="${AWS_REGION}"
-
           ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
           TF_STATE_BUCKET="guestlist-tfstate-${ACCOUNT_ID}-${AWS_REGION}"
           export TF_STATE_BUCKET
+          
+          B="${TF_STATE_BUCKET}"
+          R="${AWS_REGION}"
 
           if aws s3api head-bucket --bucket "$B" 2>/dev/null; then
             echo "Bucket $B exists."
