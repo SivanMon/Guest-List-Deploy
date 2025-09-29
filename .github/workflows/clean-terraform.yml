@@ -1,8 +1,6 @@
 name: Guest List Clean Terraform (Deploy)
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       action:
@@ -17,6 +15,10 @@ on:
         required: true
         default: dev
         options: [sivan, dvir, gili, sahar, dev, main]
+
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 env:
   TF_VERSION: 1.9.8
@@ -222,9 +224,7 @@ jobs:
             -backend-config="dynamodb_table=terraform-locks"
 
       - name: Terraform Plan
-        if: |
-          (github.event_name == 'workflow_dispatch' && inputs.action == 'plan') ||
-          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -238,9 +238,7 @@ jobs:
             -out=tfplan-${ENVIRONMENT}
 
       - name: Terraform Apply
-        if: |
-          (github.event_name == 'workflow_dispatch' && inputs.action == 'apply') ||
-          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: ${{ github.event_name == 'workflow_dispatch' }}
         shell: bash
         run: |
           set -euo pipefail
