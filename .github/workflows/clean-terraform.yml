@@ -63,7 +63,7 @@ jobs:
           TF_STATE_KEY="envs/${ENVIRONMENT}/terraform.tfstate"
 
           # 3) Image repo + tag prefix (students: prefix for latest feature tag; envs: fixed tags)
-          IMAGE_REPO="giligalili/guestlistapi"
+          IMAGE_REPO="sivanmonshi/guestlistapi"
           case "${ENVIRONMENT}" in
             sivan|dvir|sahar|gili)
               IMAGE_TAG_PREFIX="${ENVIRONMENT}-feature-"
