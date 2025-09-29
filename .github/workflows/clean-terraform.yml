@@ -224,7 +224,7 @@ jobs:
             -backend-config="dynamodb_table=terraform-locks"
 
       - name: Terraform Plan
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' }}
+        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'plan') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -238,7 +238,7 @@ jobs:
             -out=tfplan-${ENVIRONMENT}
 
       - name: Terraform Apply
-        if: ${{ github.event_name == 'workflow_dispatch' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply' }}
         shell: bash
         run: |
           set -euo pipefail
