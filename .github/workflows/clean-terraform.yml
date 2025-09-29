@@ -16,7 +16,7 @@ on:
         type: choice
         required: true
         default: dev
-        options: [sivan, dvir, gili, sahar, dev, staging, main]
+        options: [sivan, dvir, gili, sahar, dev, main]
 
 env:
   TF_VERSION: 1.9.8
@@ -70,9 +70,6 @@ jobs:
               ;;
             dev)
               IMAGE_TAG_PREFIX="dev"
-              ;;
-            staging)
-              IMAGE_TAG_PREFIX="staging"
               ;;
             main)
               IMAGE_TAG_PREFIX="latest"
@@ -197,7 +194,7 @@ jobs:
               tag="$(curl -fsSL "https://hub.docker.com/v2/repositories/${repo}/tags?page_size=100" \
                 | jq -r '.results[] | select(.name | startswith("'"${prefix}"'")) | .name' | head -n1)"
               ;;
-            dev|staging|main)
+            dev|main)
               tag="${prefix}"
               ;;
             *)
