@@ -15,6 +15,8 @@ on:
         required: true
         default: dev
         options: [sivan, dvir, gili, sahar, dev, main]
+  repository_dispatch:
+    types: [deploy_plan, deploy_apply]
 
   pull_request:
     branches: [ main ]
@@ -39,6 +41,10 @@ jobs:
       - name: Decide environment/namespace/state layout
         id: setvars
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_ENV: ${{ github.event.client_payload.environment }}
+          INPUT_ENV: ${{ inputs.environment }}
         run: |
           set -euo pipefail
 
@@ -89,6 +95,14 @@ jobs:
             echo "image_repo=${IMAGE_REPO}"
             echo "image_tag_prefix=${IMAGE_TAG_PREFIX}"
           } >> "$GITHUB_OUTPUT"
+
+          set -euo pipefail
+          if [[ "${EVENT_NAME}" == "repository_dispatch" && -n "${DISPATCH_ENV:-}" ]]; then
+            ENVIRONMENT="${DISPATCH_ENV}"
+          else
+            ENVIRONMENT="${INPUT_ENV:-dev}"
+          fi
+          echo "environment=${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
 
       - name: Show resolved values
         run: |
@@ -224,7 +238,7 @@ jobs:
             -backend-config="dynamodb_table=terraform-locks"
 
       - name: Terraform Plan
-        if: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'plan') }}
+        if: ${{ (github.event_name == 'repository_dispatch' && github.event.action == 'deploy_plan') || (github.event_name == 'workflow_dispatch' && inputs.action == 'plan') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -238,7 +252,7 @@ jobs:
             -out=tfplan-${ENVIRONMENT}
 
       - name: Terraform Apply
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply' }}
+        if: ${{ (github.event_name == 'repository_dispatch' && github.event.action == 'deploy_apply') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -256,7 +270,7 @@ jobs:
           fi
 
       - name: Show LB URL & health check (port 9999, wait)
-        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply' }}
+        if: ${{ (github.event_name == 'repository_dispatch' && github.event.action == 'deploy_apply') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply') }}
         shell: bash
         run: |
           set -euo pipefail
