@@ -1,8 +1,6 @@
 name: Guest List Clean Terraform (Deploy)
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       action:
@@ -16,7 +14,13 @@ on:
         type: choice
         required: true
         default: dev
-        options: [sivan, dvir, gili, sahar, dev, staging, main]
+        options: [sivan, dvir, gili, sahar, dev, main]
+  repository_dispatch:
+    types: [deploy_plan, deploy_apply]
+
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 env:
   TF_VERSION: 1.9.8
@@ -37,6 +41,10 @@ jobs:
       - name: Decide environment/namespace/state layout
         id: setvars
         shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_ENV: ${{ github.event.client_payload.environment }}
+          INPUT_ENV: ${{ inputs.environment }}
         run: |
           set -euo pipefail
 
@@ -71,9 +79,6 @@ jobs:
             dev)
               IMAGE_TAG_PREFIX="dev"
               ;;
-            staging)
-              IMAGE_TAG_PREFIX="staging"
-              ;;
             main)
               IMAGE_TAG_PREFIX="latest"
               ;;
@@ -90,6 +95,14 @@ jobs:
             echo "image_repo=${IMAGE_REPO}"
             echo "image_tag_prefix=${IMAGE_TAG_PREFIX}"
           } >> "$GITHUB_OUTPUT"
+
+          set -euo pipefail
+          if [[ "${EVENT_NAME}" == "repository_dispatch" && -n "${DISPATCH_ENV:-}" ]]; then
+            ENVIRONMENT="${DISPATCH_ENV}"
+          else
+            ENVIRONMENT="${INPUT_ENV:-dev}"
+          fi
+          echo "environment=${ENVIRONMENT}" >> "$GITHUB_OUTPUT"
 
       - name: Show resolved values
         run: |
@@ -197,7 +210,7 @@ jobs:
               tag="$(curl -fsSL "https://hub.docker.com/v2/repositories/${repo}/tags?page_size=100" \
                 | jq -r '.results[] | select(.name | startswith("'"${prefix}"'")) | .name' | head -n1)"
               ;;
-            dev|staging|main)
+            dev|main)
               tag="${prefix}"
               ;;
             *)
@@ -225,9 +238,7 @@ jobs:
             -backend-config="dynamodb_table=terraform-locks"
 
       - name: Terraform Plan
-        if: |
-          (github.event_name == 'workflow_dispatch' && inputs.action == 'plan') ||
-          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: ${{ (github.event_name == 'repository_dispatch' && github.event.action == 'deploy_plan') || (github.event_name == 'workflow_dispatch' && inputs.action == 'plan') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -241,9 +252,7 @@ jobs:
             -out=tfplan-${ENVIRONMENT}
 
       - name: Terraform Apply
-        if: |
-          (github.event_name == 'workflow_dispatch' && inputs.action == 'apply') ||
-          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: ${{ (github.event_name == 'repository_dispatch' && github.event.action == 'deploy_apply') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -261,7 +270,7 @@ jobs:
           fi
 
       - name: Show LB URL & health check (port 9999, wait)
-        if: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply') || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        if: ${{ (github.event_name == 'repository_dispatch' && github.event.action == 'deploy_apply') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply') }}
         shell: bash
         run: |
           set -euo pipefail
