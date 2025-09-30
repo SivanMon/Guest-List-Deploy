@@ -1,8 +1,6 @@
 name: Guest List Clean Terraform (Deploy)
 
 on:
-  push:
-    branches: [ main ]
   workflow_dispatch:
     inputs:
       action:
@@ -16,7 +14,13 @@ on:
         type: choice
         required: true
         default: dev
-        options: [sivan, dvir, gili, sahar, dev, staging, main]
+        options: [sivan, dvir, gili, sahar, dev, main]
+  repository_dispatch:
+    types: [deploy_plan, deploy_apply]
+
+  pull_request:
+    branches: [ main ]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 env:
   TF_VERSION: 1.9.8
@@ -37,49 +41,43 @@ jobs:
       - name: Decide environment/namespace/state layout
         id: setvars
         shell: bash
+        env:
+          EVENT_NAME:   ${{ github.event_name }}
+          DISPATCH_ENV: ${{ github.event.client_payload.environment }}
+          INPUT_ENV:    ${{ inputs.environment }}
+          AWS_REGION:   ${{ env.AWS_REGION }}
+          REPO_OWNER:   ${{ github.repository_owner }}
+          REPO:         ${{ github.repository }}   # e.g. SivanMon/Guest-List-Deploy
         run: |
           set -euo pipefail
 
-          # 1) ENV resolution
-          if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_NAME}" == "main" ]]; then
-            ENVIRONMENT="main"
+          # 1) Resolve environment
+          if [[ "${EVENT_NAME}" == "repository_dispatch" && -n "${DISPATCH_ENV:-}" ]]; then
+            ENVIRONMENT="${DISPATCH_ENV}"
           else
-            # From manual picker
-            ENVIRONMENT="${{ github.event.inputs.environment || '' }}"
-            if [[ -z "${ENVIRONMENT}" ]]; then ENVIRONMENT="dev"; fi
+            ENVIRONMENT="${INPUT_ENV:-dev}"
           fi
 
           NAMESPACE="guestlist"
 
-          # 2) State bucket/key: students use "-feature" suffix
-          case "${ENVIRONMENT}" in
-            sivan|dvir|sahar|gili)
-              TF_STATE_BUCKET="guestlist-tfstate-${ENVIRONMENT}-feature"
-              ;;
-            *)
-              TF_STATE_BUCKET="guestlist-tfstate-${ENVIRONMENT}"
-              ;;
-          esac
+          # 2) Globally-unique bucket use owner+repo
+          owner="$(echo "${REPO_OWNER}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')"
+          repo="$(echo "${REPO#*/}"  | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')"
+          bucket="guestlist-tfstate-${owner}-${repo}"
+          bucket="${bucket:0:63}"               # S3 bucket length limit
+          bucket="${bucket%-}"                  # strip trailing '-'
+          TF_STATE_BUCKET="${bucket}"
+
+          # Per-environment key
           TF_STATE_KEY="envs/${ENVIRONMENT}/terraform.tfstate"
 
-          # 3) Image repo + tag prefix (students: prefix for latest feature tag; envs: fixed tags)
-          IMAGE_REPO="giligalili/guestlistapi"
+          # 3) Image repo + tag prefix
+          IMAGE_REPO="sivanmonshi/guestlistapi"
           case "${ENVIRONMENT}" in
-            sivan|dvir|sahar|gili)
-              IMAGE_TAG_PREFIX="${ENVIRONMENT}-feature-"
-              ;;
-            dev)
-              IMAGE_TAG_PREFIX="dev"
-              ;;
-            staging)
-              IMAGE_TAG_PREFIX="staging"
-              ;;
-            main)
-              IMAGE_TAG_PREFIX="latest"
-              ;;
-            *)
-              IMAGE_TAG_PREFIX="dev"
-              ;;
+            sivan|dvir|sahar|gili) IMAGE_TAG_PREFIX="${ENVIRONMENT}-feature-" ;;
+            dev)                    IMAGE_TAG_PREFIX="dev" ;;
+            main)                   IMAGE_TAG_PREFIX="latest" ;;
+            *)                      IMAGE_TAG_PREFIX="dev" ;;
           esac
 
           {
@@ -90,6 +88,10 @@ jobs:
             echo "image_repo=${IMAGE_REPO}"
             echo "image_tag_prefix=${IMAGE_TAG_PREFIX}"
           } >> "$GITHUB_OUTPUT"
+
+          # Export to job env so downstream steps that rely on env vars keep working
+          echo "TF_STATE_BUCKET=${TF_STATE_BUCKET}" >> "$GITHUB_ENV"
+          echo "TF_STATE_KEY=${TF_STATE_KEY}"       >> "$GITHUB_ENV"
 
       - name: Show resolved values
         run: |
@@ -118,24 +120,27 @@ jobs:
 
       - name: Ensure S3 state bucket exists (idempotent)
         shell: bash
+        env:
+          B: ${{ env.TF_STATE_BUCKET }}   # comes from job env set earlier (or from needs.outputs if you set it there)
+          R: ${{ env.AWS_REGION }}
         run: |
           set -euo pipefail
-          B="${TF_STATE_BUCKET}"
-          R="${AWS_REGION}"
+          echo "Ensuring bucket: ${B} in region: ${R}"
 
-          if aws s3api head-bucket --bucket "$B" 2>/dev/null; then
-            echo "Bucket $B exists."
+          if aws s3api head-bucket --bucket "${B}" 2>/dev/null; then
+            echo "Bucket ${B} exists."
           else
-            if [[ "$R" == "us-east-1" ]]; then
-              aws s3api create-bucket --bucket "$B"
+            if [[ "${R}" == "us-east-1" ]]; then
+              aws s3api create-bucket --bucket "${B}"
             else
-              aws s3api create-bucket --bucket "$B" --create-bucket-configuration LocationConstraint="$R"
+              aws s3api create-bucket --bucket "${B}" \
+                --create-bucket-configuration LocationConstraint="${R}"
             fi
-            aws s3api put-bucket-versioning --bucket "$B" --versioning-configuration Status=Enabled
-            aws s3api put-bucket-encryption --bucket "$B" --server-side-encryption-configuration '{
-              "Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-            aws s3api put-public-access-block --bucket "$B" --public-access-block-configuration \
-              BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
+            aws s3api put-bucket-versioning --bucket "${B}" --versioning-configuration Status=Enabled
+            aws s3api put-bucket-encryption --bucket "${B}" \
+              --server-side-encryption-configuration '{"Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
+            aws s3api put-public-access-block --bucket "${B}" \
+              --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
           fi
 
       - name: Ensure DynamoDB lock table exists (idempotent)
@@ -197,7 +202,7 @@ jobs:
               tag="$(curl -fsSL "https://hub.docker.com/v2/repositories/${repo}/tags?page_size=100" \
                 | jq -r '.results[] | select(.name | startswith("'"${prefix}"'")) | .name' | head -n1)"
               ;;
-            dev|staging|main)
+            dev|main)
               tag="${prefix}"
               ;;
             *)
@@ -225,9 +230,7 @@ jobs:
             -backend-config="dynamodb_table=terraform-locks"
 
       - name: Terraform Plan
-        if: |
-          (github.event_name == 'workflow_dispatch' && inputs.action == 'plan') ||
-          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: ${{ (github.event_name == 'repository_dispatch' && github.event.action == 'deploy_plan') || (github.event_name == 'workflow_dispatch' && inputs.action == 'plan') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -241,9 +244,7 @@ jobs:
             -out=tfplan-${ENVIRONMENT}
 
       - name: Terraform Apply
-        if: |
-          (github.event_name == 'workflow_dispatch' && inputs.action == 'apply') ||
-          (github.event_name == 'push' && github.ref == 'refs/heads/main')
+        if: ${{ (github.event_name == 'repository_dispatch' && github.event.action == 'deploy_apply') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply') }}
         shell: bash
         run: |
           set -euo pipefail
@@ -261,7 +262,7 @@ jobs:
           fi
 
       - name: Show LB URL & health check (port 9999, wait)
-        if: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.action == 'apply') || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        if: ${{ (github.event_name == 'repository_dispatch' && github.event.action == 'deploy_apply') || (github.event_name == 'workflow_dispatch' && inputs.action == 'apply') }}
         shell: bash
         run: |
           set -euo pipefail

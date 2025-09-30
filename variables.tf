@@ -57,7 +57,7 @@ variable "app_replicas" {
 variable "image_repo" {
   type        = string
   description = "Docker image repository"
-  default     = "docker.io/giligalili/guestlistapi"
+  default     = "docker.io/sivanmonshi/guestlistapi"
 }
 
 variable "image_tag" {
