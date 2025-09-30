@@ -213,15 +213,15 @@ Guest-List-Deploy/
 
 Each team member has their own dedicated environment for development:
 
-| Environment | Purpose | Access | Trigger |
-|-------------|---------|--------|---------|
-| **gili** | Personal development | Manual deployment | Feature branch<br/>deployment |
-| **sivan** | Personal development | Manual deployment | Feature branch<br/>deployment |
-| **sahar** | Personal development | Manual deployment | Feature branch<br/>deployment |
-| **dvir** | Personal development | Manual deployment | Feature branch<br/>deployment |
-| **dev** | Integration testing | Auto-deployment | Push to dev branch |
-| **staging** | Pre-production<br/>validation | Manual deployment | After dev integration<br/>complete |
-| **main** | Production | Auto-deployment | PR merge to main |
+| Environment | Purpose                    | Access            | Trigger                      |
+|-------------|----------------------------|-------------------|------------------------------|
+| **gili**    | Personal development       | Manual deployment | Feature branch deployment    |
+| **sivan**   | Personal development       | Manual deployment | Feature branch deployment    |
+| **sahar**   | Personal development       | Manual deployment | Feature branch deployment    |
+| **dvir**    | Personal development       | Manual deployment | Feature branch deployment    |
+| **dev**     | Integration testing        | Auto-deployment   | Push to dev branch           |
+| **staging** | Pre-production validation  | Manual deployment | After dev integration        |
+| **main**    | Production                 | Auto-deployment   | PR merge to main             |
 
 ---
 
@@ -425,15 +425,15 @@ Our project incorporates security at every layer:
 
 **Monthly Estimated Costs (Educational/Development Use)**
 
-| Service | Configuration | Monthly Cost |
-|---------|---------------|-------------|
-| **EKS Control Plane** | 1 cluster × $72 | $72.00 |
-| **EC2 Worker Nodes** | 2 × t3.small | $30.40 |
-| **NAT Gateway** | 1 gateway +<br/>data transfer | $32.40 |
-| **Application Load Balancer** | 1 ALB with<br/>health checks | $16.20 |
-| **DynamoDB** | Pay-per-request<br/>billing | $5-15 |
-| **S3 Storage** | Terraform<br/>state files | $1-3 |
-| **Total per Environment** |  | **~$157** |
+| Service                     | Configuration              | Monthly Cost |
+|-----------------------------|----------------------------|--------------|
+| **EKS Control Plane**       | 1 cluster × $72            | $72.00       |
+| **EC2 Worker Nodes**        | 2 × t3.small               | $30.40       |
+| **NAT Gateway**             | 1 gateway + data transfer  | $32.40       |
+| **Application Load Balancer** | 1 ALB with health checks | $16.20       |
+| **DynamoDB**                | Pay-per-request billing    | $5-15        |
+| **S3 Storage**              | Terraform state files      | $1-3         |
+| **Total per Environment**   |                            | **~$157**    |
 
 **Cost Optimization Strategies:**
 - Single NAT Gateway shared across AZs
