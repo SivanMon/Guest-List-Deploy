@@ -29,7 +29,7 @@ Complete Infrastructure-as-Code deployment for the Guest List API using Terrafor
 This repository contains the complete infrastructure deployment configuration for our Guest List API project. It demonstrates advanced DevSecOps practices including Infrastructure as Code, automated deployment pipelines, and multi-environment management using industry-standard tools.
 
 **Key Capabilities:**
-- **Multi-Environment Deployment:** Individual student environments plus shared dev/prod
+- **Multi-Environment Deployment:** Individual student environments plus shared dev/staging/prod
 - **Infrastructure as Code:** Complete AWS infrastructure managed through Terraform
 - **Container Orchestration:** Kubernetes deployment on AWS EKS
 - **Automated CI/CD:** GitHub Actions with cross-repository integration
@@ -195,21 +195,23 @@ Our deployment process integrates seamlessly with the API repository:
 ### Complete Pipeline Trigger Matrix
 
 | Trigger Source | Event Type | Environment | Docker Image Resolution | Terraform Operation | Description |
-|---------------|------------|-------------|------------------------|-------------------|-------------|
-| **API Repository** | Push to `dev` | `dev` | `dev` tag | `terraform plan` | Integration testing deployment |
-| **API Repository** | Push to `main` | `main` | `latest` tag | None | Production image build only |
+|----------------|------------|-------------|-------------------------|-------------------|-------------|
+| **API Repository** | Push to `dev` | `dev` | `dev` tag | `terraform plan` | Integration testing<br/>deployment |
+| **API Repository** | Push to `main` | `main` | `latest` tag | None | Production image<br/>build only |
 | **API Repository** | PR to `main` | `main` | `latest` tag | `terraform apply` | Production deployment |
 | **API Repository** | Manual `dev` | `dev` | `dev` tag | `terraform plan` | Manual dev planning |
-| **API Repository** | Manual `main` | `main` | `latest` tag | `terraform apply` | Manual production deployment |
-| **Deploy Repository** | Manual dispatch | Any | Latest available | `plan`/`apply`/`destroy` | Direct infrastructure management |
-| **Deploy Repository** | PR to main | N/A | N/A | `terraform plan` | Infrastructure change preview |
+| **API Repository** | Manual `staging` | `staging` | `dev` tag | `terraform apply` | Pre-production<br/>validation |
+| **API Repository** | Manual `main` | `main` | `latest` tag | `terraform apply` | Manual production<br/>deployment |
+| **Deploy Repository** | Manual dispatch | Any | Latest available | `plan`/`apply`/<br/>`destroy` | Direct infrastructure<br/>management |
+| **Deploy Repository** | PR to main | N/A | N/A | `terraform plan` | Infrastructure change<br/>preview |
 
 ### Repository Dispatch Integration
 
 | API Event | Dispatch Type | Deploy Action | Payload | Result |
-|-----------|--------------|---------------|---------|--------|
-| Push to `dev` branch | `deploy_plan` | Plan infrastructure | `{"environment": "dev"}` | Dev environment planning |
-| Manual run with `dev` | `deploy_plan` | Plan infrastructure | `{"environment": "dev"}` | Dev environment planning |
+|-----------|---------------|---------------|---------|--------|
+| Push to `dev` branch | `deploy_plan` | Plan infrastructure | `{"environment": "dev"}` | Dev environment<br/>planning |
+| Manual run with `dev` | `deploy_plan` | Plan infrastructure | `{"environment": "dev"}` | Dev environment<br/>planning |
+| Manual run with `staging` | `deploy_apply` | Apply infrastructure | `{"environment": "staging"}` | Staging deployment |
 | PR to `main` branch | `deploy_apply` | Apply infrastructure | `{"environment": "main"}` | Production deployment |
 | Manual run with `main` | `deploy_apply` | Apply infrastructure | `{"environment": "main"}` | Production deployment |
 
@@ -234,14 +236,15 @@ sequenceDiagram
 
 ### Environment-Specific Triggers
 
-| Environment | Trigger Source | Image Tag Pattern | Auto-Deploy | Manual Override |
-|-------------|---------------|------------------|-------------|----------------|
-| `gili` | Manual only | `gili-feature-*` | No | Yes |
-| `sivan` | Manual only | `sivan-feature-*` | No | Yes |
-| `sahar` | Manual only | `sahar-feature-*` | No | Yes |
-| `dvir` | Manual only | `dvir-feature-*` | No | Yes |
-| `dev` | API push/manual | `dev` | Yes | Yes |
-| `main` | API PR/manual | `latest` | Yes | Yes |
+| Environment | Trigger Source | Image Tag Pattern | Auto-Deploy | Manual Override | Purpose |
+|-------------|----------------|-------------------|-------------|-----------------|---------|
+| `gili` | Manual only | `gili-feature-*` | No | Yes | Individual<br/>development |
+| `sivan` | Manual only | `sivan-feature-*` | No | Yes | Individual<br/>development |
+| `sahar` | Manual only | `sahar-feature-*` | No | Yes | Individual<br/>development |
+| `dvir` | Manual only | `dvir-feature-*` | No | Yes | Individual<br/>development |
+| `dev` | API push/<br/>manual | `dev` | Yes | Yes | Integration<br/>testing |
+| `staging` | Manual only | `dev` | No | Yes | Pre-production<br/>validation |
+| `main` | API PR/<br/>manual | `latest` | Yes | Yes | Production<br/>deployment |
 
 ## ☁️ AWS Resources
 

@@ -6,248 +6,118 @@ This comprehensive visual guide shows the complete DevSecOps architecture with r
 
 ```mermaid
 graph TB
-    %% Developer Workflow
-    subgraph DEV_FLOW ["👥 Development Workflow"]
-        DEV_TEAM["🧑‍💻 Team Members<br/>🎯 Gili, Sivan, Sahar, Dvir<br/>💡 Collaborative Development"]
-        
-        subgraph FEATURES ["🌟 Feature Development"]
-            GILI_BRANCH["🟢 gili-feature-*<br/>🔧 Personal development<br/>🧪 Individual testing"]
-            SIVAN_BRANCH["🔵 sivan-feature-*<br/>🔧 Personal development<br/>🧪 Individual testing"]
-            SAHAR_BRANCH["🟡 sahar-feature-*<br/>🔧 Personal development<br/>🧪 Individual testing"]
-            DVIR_BRANCH["🟣 dvir-feature-*<br/>🔧 Personal development<br/>🧪 Individual testing"]
-        end
-        
-        DEV_BRANCH["🔀 dev Branch<br/>🤝 Integration & Testing<br/>📊 Team Collaboration"]
-        MAIN_BRANCH["🚀 main Branch<br/>🏭 Production Release<br/>✅ Stable Deployment"]
-        
-        DEV_TEAM -.-> GILI_BRANCH
-        DEV_TEAM -.-> SIVAN_BRANCH  
-        DEV_TEAM -.-> SAHAR_BRANCH
-        DEV_TEAM -.-> DVIR_BRANCH
-        
-        GILI_BRANCH ==> DEV_BRANCH
-        SIVAN_BRANCH ==> DEV_BRANCH
-        SAHAR_BRANCH ==> DEV_BRANCH
-        DVIR_BRANCH ==> DEV_BRANCH
-        
-        DEV_BRANCH ===> MAIN_BRANCH
-    end
-
-    %% Repository Structure
+    %% Developer Input
+    DEVELOPERS["👨‍💻 Development Team<br/>Gili, Sivan, Sahar, Dvir"]
+    
+    %% Code Repositories
     subgraph REPOS ["📚 GitHub Repositories"]
-        subgraph API_REPO ["🔥 Guest-List-API Repository"]
-            API_CODE["📱 Flask REST API<br/>🐍 Python 3.11<br/>🗄️ DynamoDB Integration<br/>🌐 Web Interface<br/>🔒 Input Validation"]
-            API_DOCKER["🐳 Dockerfile<br/>🏗️ Multi-stage build<br/>❤️ Health checks<br/>⚡ Performance optimization<br/>🔐 Security hardening"]
-            API_CI["⚙️ GitHub Actions<br/>🚀 api-workflow.yml<br/>🧪 Automated testing<br/>📦 Image publishing"]
-        end
-        
-        subgraph DEPLOY_REPO ["🎯 Guest-List-Deploy Repository"]
-            TERRAFORM["🏗️ Terraform IaC<br/>☁️ AWS Provider<br/>☸️ EKS Cluster<br/>📊 DynamoDB Tables<br/>🌐 Network Infrastructure"]
-            K8S_MANIFESTS["☸️ Kubernetes<br/>🚀 Deployments<br/>⚖️ Services<br/>📋 ConfigMaps<br/>🔑 Secrets"]
-            DEPLOY_CI["⚙️ GitHub Actions<br/>🎬 clean-terraform.yml<br/>🔄 Cross-repo triggers<br/>📊 Health validation"]
-        end
+        API_REPO["📱 Guest-List-API<br/>Flask Application Code<br/>Docker & CI/CD"]
+        DEPLOY_REPO["🏗️ Guest-List-Deploy<br/>Terraform Infrastructure<br/>Kubernetes Configs"]
     end
-
-    %% CI/CD Pipeline
+    
+    %% CI/CD Process
     subgraph PIPELINE ["🔄 CI/CD Pipeline"]
-        subgraph API_STAGES ["🔥 API Pipeline Stages"]
-            BUILD["🔨 Build & Test<br/>🐳 Docker build<br/>🗄️ DynamoDB Local<br/>🧪 Integration tests<br/>✅ Quality gates"]
-            TEST["🧪 API Testing<br/>❤️ Health checks<br/>🔧 CRUD operations<br/>🚨 Error handling<br/>📊 Coverage reports"]
-            PUBLISH["📦 Image Publishing<br/>🐳 Docker Hub<br/>🏷️ Tag strategy<br/>🌍 Multi-environment<br/>🔐 Registry security"]
-        end
-        
-        subgraph DEPLOY_STAGES ["🎯 Deploy Pipeline Stages"]
-            PLAN["📋 Terraform Plan<br/>👀 Infrastructure preview<br/>✅ Resource validation<br/>💰 Cost estimation<br/>🔒 Security checks"]
-            APPLY["🚀 Terraform Apply<br/>🏗️ Resource provisioning<br/>☸️ Kubernetes deployment<br/>❤️ Health validation<br/>📊 Monitoring setup"]
-        end
-        
-        REPO_DISPATCH["🔔 Repository Dispatch<br/>🌉 Cross-repo communication<br/>⚡ Real-time triggers<br/>📡 Event propagation"]
+        BUILD["🔨 Build & Test<br/>Docker Images<br/>API Testing"]
+        TRIGGER["🔔 Cross-Repo Trigger<br/>Repository Dispatch<br/>Environment Selection"]
+        DEPLOY["🚀 Infrastructure Deploy<br/>Terraform Apply<br/>Kubernetes Update"]
     end
-
+    
     %% Container Registry
-    DOCKER_HUB["🐳 Docker Hub Registry<br/>📦 sivanmonshi/guestlistapi<br/>🏷️ latest (main)<br/>🏷️ dev (dev branch)<br/>🏷️ student-feature-* (features)<br/>🔐 Access control<br/>📊 Image scanning"]
-
-    %% AWS Cloud Infrastructure
-    subgraph AWS_CLOUD ["☁️ AWS Cloud Infrastructure"]
-        subgraph NETWORK ["🌐 Networking Layer"]
-            VPC["🏠 VPC 10.0.0.0/16<br/>🌐 DNS hostnames<br/>🔍 DNS support<br/>🔒 Network isolation<br/>📊 Flow logs"]
-            
-            subgraph PUBLIC_NETS ["📡 Public Subnets"]
-                PUB_1["📡 Public Subnet 1<br/>🌐 10.0.1.0/24<br/>📍 us-east-1a<br/>🌍 Internet access<br/>⚖️ Load balancer ready"]
-                PUB_2["📡 Public Subnet 2<br/>🌐 10.0.2.0/24<br/>📍 us-east-1b<br/>🌍 Internet access<br/>⚖️ Load balancer ready"]
-            end
-            
-            subgraph PRIVATE_NETS ["🔒 Private Subnets"]
-                PRIV_1["🔒 Private Subnet 1<br/>🌐 10.0.10.0/24<br/>📍 us-east-1a<br/>🛡️ Secure workloads<br/>☸️ Kubernetes nodes"]
-                PRIV_2["🔒 Private Subnet 2<br/>🌐 10.0.11.0/24<br/>📍 us-east-1b<br/>🛡️ Secure workloads<br/>☸️ Kubernetes nodes"]
-            end
-            
-            IGW["🌍 Internet Gateway<br/>🚪 Public internet access<br/>⚡ High bandwidth<br/>🔒 Security groups"]
-            NAT["🔄 NAT Gateway<br/>🌍 Outbound internet<br/>🔒 Private subnet access<br/>💰 Cost optimized<br/>🏠 Single AZ placement"]
+    REGISTRY["🐳 Docker Hub<br/>sivanmonshi/guestlistapi<br/>Image Tags by Environment"]
+    
+    %% AWS Cloud
+    subgraph AWS ["☁️ AWS Cloud Infrastructure"]
+        subgraph EKS_CLUSTER ["☸️ EKS Kubernetes Cluster"]
+            PODS["🏃 API Pods<br/>Flask Application<br/>Auto-scaling"]
+            LB_SVC["⚖️ Load Balancer<br/>External Access<br/>Health Checks"]
         end
         
-        subgraph COMPUTE ["💻 Compute Layer"]
-            EKS["☸️ EKS Cluster<br/>🎯 Kubernetes 1.28<br/>🏗️ Managed control plane<br/>🌍 Multi-AZ deployment<br/>📊 Logging enabled<br/>🔒 IAM integration"]
-            
-            subgraph NODES ["🖥️ Worker Nodes"]
-                NODE_1["💻 t3.small Node 1<br/>📈 Auto Scaling Group<br/>🔒 Private subnet<br/>🐳 Container runtime<br/>📊 CloudWatch agent"]
-                NODE_2["💻 t3.small Node 2<br/>📈 Auto Scaling Group<br/>🔒 Private subnet<br/>🐳 Container runtime<br/>📊 CloudWatch agent"]
-            end
-        end
-        
-        subgraph DATABASE ["📊 Database Layer"]
-            subgraph DDB_TABLES ["🗄️ DynamoDB Tables"]
-                DDB_GILI["📊 GuestList-gili<br/>🟢 Personal development<br/>⚡ Pay-per-request<br/>🔐 Encryption at rest"]
-                DDB_SIVAN["📊 GuestList-sivan<br/>🔵 Personal development<br/>⚡ Pay-per-request<br/>🔐 Encryption at rest"]
-                DDB_SAHAR["📊 GuestList-sahar<br/>🟡 Personal development<br/>⚡ Pay-per-request<br/>🔐 Encryption at rest"]
-                DDB_DVIR["📊 GuestList-dvir<br/>🟣 Personal development<br/>⚡ Pay-per-request<br/>🔐 Encryption at rest"]
-                DDB_DEV["📊 GuestList-dev<br/>🔧 Integration testing<br/>⚡ Pay-per-request<br/>🔐 Encryption at rest"]
-                DDB_MAIN["📊 GuestList-main<br/>🏭 Production data<br/>⚡ Pay-per-request<br/>🔐 Encryption at rest"]
-            end
-        end
-        
-        subgraph LOAD_BAL ["⚖️ Load Balancing"]
-            ALB["⚖️ Application Load Balancer<br/>❤️ Health checks<br/>🔐 SSL termination<br/>🌍 Multi-AZ distribution<br/>📊 Access logging<br/>🛡️ WAF integration"]
-        end
-        
-        subgraph STATE_MGMT ["🗄️ State Management"]
-            S3_STATE["🗄️ S3 State Bucket<br/>🔄 Versioning enabled<br/>🔐 Encryption at rest<br/>🔑 Per-environment keys<br/>🚫 Public access blocked"]
-            DDB_LOCKS["🔐 DynamoDB Locks<br/>🏷️ terraform-locks table<br/>🛡️ Concurrent protection<br/>⚡ On-demand billing"]
+        subgraph DATABASES ["📊 DynamoDB Tables"]
+            STUDENT_DBS["👤 Student Environments<br/>GuestList-gili<br/>GuestList-sivan<br/>GuestList-sahar<br/>GuestList-dvir"]
+            SHARED_DBS["🤝 Shared Environments<br/>GuestList-dev<br/>GuestList-staging<br/>GuestList-main"]
         end
     end
-
-    %% Application Layer
-    subgraph APP_RUNTIME ["🚀 Application Runtime"]
-        subgraph K8S_WORKLOADS ["☸️ Kubernetes Workloads"]
-            NAMESPACE["📁 guestlist namespace<br/>🏷️ Resource isolation<br/>🔒 Security boundaries<br/>📊 Resource quotas"]
-            
-            subgraph API_DEPLOYMENT ["🏃 API Deployment"]
-                POD_1["🏃 API Pod 1<br/>🐍 Flask application<br/>❤️ Health probes<br/>📊 Resource limits<br/>🔒 Security context"]
-                POD_2["🏃 API Pod 2<br/>🐍 Flask application<br/>❤️ Health probes<br/>📊 Resource limits<br/>🔒 Security context"]
-                POD_3["🏃 API Pod 3<br/>🐍 Flask application<br/>❤️ Health probes<br/>📊 Resource limits<br/>🔒 Security context"]
-            end
-            
-            K8S_SVC["⚙️ Kubernetes Service<br/>⚖️ LoadBalancer type<br/>🔌 Port 9999 → 1111<br/>🎯 Pod selection<br/>📊 Session affinity"]
-            K8S_HPA["📈 Horizontal Pod Autoscaler<br/>📊 CPU-based scaling<br/>📉 Min: 1, Max: 5<br/>🎯 Target: 70% CPU<br/>⚡ Rapid response"]
-            K8S_SECRET["🔑 Secrets<br/>🔐 AWS credentials<br/>🗄️ DynamoDB config<br/>🌍 Environment vars<br/>🔒 Base64 encoded"]
-        end
-    end
-
-    %% Environment Strategy
-    subgraph ENV_MGMT ["🌍 Environment Management"]
-        subgraph INDIVIDUAL ["👤 Individual Environments"]
-            ENV_GILI["👤 gili Environment<br/>🟢 Personal development<br/>🖼️ gili-feature images<br/>🧪 Isolated testing<br/>💡 Innovation space"]
-            ENV_SIVAN["👤 sivan Environment<br/>🔵 Personal development<br/>🖼️ sivan-feature images<br/>🧪 Isolated testing<br/>💡 Innovation space"]
-            ENV_SAHAR["👤 sahar Environment<br/>🟡 Personal development<br/>🖼️ sahar-feature images<br/>🧪 Isolated testing<br/>💡 Innovation space"]
-            ENV_DVIR["👤 dvir Environment<br/>🟣 Personal development<br/>🖼️ dvir-feature images<br/>🧪 Isolated testing<br/>💡 Innovation space"]
-        end
-        
-        ENV_DEV["🔧 dev Environment<br/>🤝 Integration testing<br/>👥 Team collaboration<br/>🏷️ dev image tag<br/>🔄 Continuous integration"]
-        ENV_MAIN["🏭 main Environment<br/>✅ Production stable<br/>🏷️ latest image tag<br/>🚀 High availability<br/>📊 Performance monitoring"]
-    end
-
-    %% External Access
-    USERS["👥 End Users<br/>🌐 Web browsers<br/>📱 API clients<br/>🔒 Authenticated access<br/>⚡ Fast response times"]
-    DEVS["👨‍💻 Developers<br/>☸️ kubectl access<br/>☁️ AWS CLI tools<br/>📚 GitHub integration<br/>🔧 Development tools"]
-
-    %% Enhanced Flow Connections with colors
-    %% Development Flow
-    API_CODE -.->|"🔄 Code changes"| API_CI
-    API_CI ==>|"🔨 Build trigger"| BUILD
-    BUILD ==>|"✅ Build success"| TEST
-    TEST ==>|"🧪 Tests pass"| PUBLISH
-    PUBLISH ==>|"📦 Image ready"| DOCKER_HUB
-    PUBLISH ==>|"🔔 Trigger event"| REPO_DISPATCH
     
-    REPO_DISPATCH ==>|"📡 Cross-repo"| DEPLOY_CI
-    DEPLOY_CI ==>|"📋 Plan phase"| PLAN
-    PLAN ==>|"🚀 Deploy phase"| APPLY
+    %% Users
+    USERS["👥 End Users<br/>Web Interface<br/>API Clients"]
     
-    %% Infrastructure Flow  
-    TERRAFORM -.->|"🏗️ Infrastructure"| APPLY
-    K8S_MANIFESTS -.->|"☸️ Workloads"| APPLY
-    APPLY ==>|"🎯 Provision EKS"| EKS
-    APPLY ==>|"🗄️ Create tables"| DDB_GILI
-    APPLY ==>|"🗄️ Create tables"| DDB_SIVAN
-    APPLY ==>|"🗄️ Create tables"| DDB_SAHAR
-    APPLY ==>|"🗄️ Create tables"| DDB_DVIR
-    APPLY ==>|"🗄️ Create tables"| DDB_DEV
-    APPLY ==>|"🗄️ Create tables"| DDB_MAIN
+    %% Flow connections
+    DEVELOPERS ==> API_REPO
+    DEVELOPERS ==> DEPLOY_REPO
     
-    %% Networking Flow
-    VPC -.->|"🌐 Contains"| PUB_1
-    VPC -.->|"🌐 Contains"| PUB_2
-    VPC -.->|"🔒 Contains"| PRIV_1
-    VPC -.->|"🔒 Contains"| PRIV_2
-    IGW ==>|"🌍 Internet"| PUB_1
-    IGW ==>|"🌍 Internet"| PUB_2
-    NAT ==>|"🔄 Outbound"| PRIV_1
-    NAT ==>|"🔄 Outbound"| PRIV_2
-    PUB_1 -.->|"💰 Cost optimized"| NAT
+    API_REPO ==> BUILD
+    BUILD ==> REGISTRY
+    BUILD ==> TRIGGER
     
-    %% Kubernetes Flow
-    EKS ==>|"☸️ Manages"| NODE_1
-    EKS ==>|"☸️ Manages"| NODE_2
-    NODE_1 ==>|"🏃 Runs"| POD_1
-    NODE_1 ==>|"🏃 Runs"| POD_2
-    NODE_2 ==>|"🏃 Runs"| POD_3
-    K8S_SVC ==>|"⚖️ Routes to"| POD_1
-    K8S_SVC ==>|"⚖️ Routes to"| POD_2
-    K8S_SVC ==>|"⚖️ Routes to"| POD_3
-    K8S_HPA -.->|"📈 Scales"| POD_1
-    K8S_HPA -.->|"📈 Scales"| POD_2
-    K8S_HPA -.->|"📈 Scales"| POD_3
+    TRIGGER ==> DEPLOY
+    DEPLOY_REPO ==> DEPLOY
     
-    %% External Access Flow
-    USERS ==>|"🌐 HTTP/HTTPS"| ALB
-    ALB ==>|"⚖️ Load balance"| K8S_SVC
-    DEVS ==>|"🔧 Management"| EKS
+    REGISTRY ==> PODS
+    DEPLOY ==> EKS_CLUSTER
+    DEPLOY ==> DATABASES
     
-    %% State Management Flow
-    APPLY ==>|"🗄️ State storage"| S3_STATE
-    APPLY ==>|"🔐 Lock management"| DDB_LOCKS
+    LB_SVC ==> USERS
+    PODS <==> STUDENT_DBS
+    PODS <==> SHARED_DBS
     
-    %% Environment Flow
-    ENV_GILI ==>|"🔗 Uses"| DDB_GILI
-    ENV_SIVAN ==>|"🔗 Uses"| DDB_SIVAN
-    ENV_SAHAR ==>|"🔗 Uses"| DDB_SAHAR
-    ENV_DVIR ==>|"🔗 Uses"| DDB_DVIR
-    ENV_DEV ==>|"🔗 Uses"| DDB_DEV
-    ENV_MAIN ==>|"🔗 Uses"| DDB_MAIN
-
-    %% Docker Registry Flow
-    DOCKER_HUB ==>|"📥 Pull image"| POD_1
-    DOCKER_HUB ==>|"📥 Pull image"| POD_2
-    DOCKER_HUB ==>|"📥 Pull image"| POD_3
-
-    %% Rich Color Styling
-    classDef awsOrange fill:#FF9900,stroke:#FF6600,stroke-width:3px,color:#FFFFFF,font-weight:bold
-    classDef k8sBlue fill:#326CE5,stroke:#1E4A9C,stroke-width:3px,color:#FFFFFF,font-weight:bold
-    classDef gitDark fill:#24292E,stroke:#000000,stroke-width:3px,color:#FFFFFF,font-weight:bold
-    classDef envGreen fill:#28A745,stroke:#1E7E34,stroke-width:3px,color:#FFFFFF,font-weight:bold
-    classDef pipelinePurple fill:#6F42C1,stroke:#563D7C,stroke-width:3px,color:#FFFFFF,font-weight:bold
-    classDef networkCyan fill:#17A2B8,stroke:#138496,stroke-width:3px,color:#FFFFFF,font-weight:bold
-    classDef computeLime fill:#20C997,stroke:#17A085,stroke-width:3px,color:#FFFFFF,font-weight:bold
-    classDef databaseRed fill:#DC3545,stroke:#C82333,stroke-width:3px,color:#FFFFFF,font-weight:bold
-    classDef loadBalancerYellow fill:#FFC107,stroke:#E0A800,stroke-width:3px,color:#212529,font-weight:bold
-    classDef userPink fill:#E83E8C,stroke:#D91A72,stroke-width:3px,color:#FFFFFF,font-weight:bold
-    classDef featureColors fill:#6610F2,stroke:#520DC2,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    %% Styling
+    classDef repoColor fill:#2D3748,stroke:#4A5568,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef pipelineColor fill:#6B46C1,stroke:#553C9A,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef awsColor fill:#FF9900,stroke:#E68900,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef k8sColor fill:#326CE5,stroke:#2557CC,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef dataColor fill:#DC2626,stroke:#B91C1C,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef userColor fill:#059669,stroke:#047857,stroke-width:3px,color:#FFFFFF,font-weight:bold
     
-    %% Apply color classes
-    class VPC,IGW,NAT,S3_STATE,DDB_LOCKS awsOrange
-    class EKS,NAMESPACE,POD_1,POD_2,POD_3,K8S_SVC,K8S_HPA,K8S_SECRET k8sBlue
-    class API_CODE,API_DOCKER,API_CI,TERRAFORM,K8S_MANIFESTS,DEPLOY_CI,DOCKER_HUB gitDark
-    class ENV_GILI,ENV_SIVAN,ENV_SAHAR,ENV_DVIR,ENV_DEV,ENV_MAIN envGreen
-    class BUILD,TEST,PUBLISH,PLAN,APPLY,REPO_DISPATCH pipelinePurple
-    class PUB_1,PUB_2,PRIV_1,PRIV_2 networkCyan
-    class NODE_1,NODE_2 computeLime
-    class DDB_GILI,DDB_SIVAN,DDB_SAHAR,DDB_DVIR,DDB_DEV,DDB_MAIN databaseRed
-    class ALB loadBalancerYellow
-    class USERS,DEVS,DEV_TEAM userPink
-    class GILI_BRANCH,SIVAN_BRANCH,SAHAR_BRANCH,DVIR_BRANCH featureColors
+    class API_REPO,DEPLOY_REPO,REGISTRY repoColor
+    class BUILD,TRIGGER,DEPLOY pipelineColor
+    class AWS awsColor
+    class EKS_CLUSTER,PODS,LB_SVC k8sColor
+    class DATABASES,STUDENT_DBS,SHARED_DBS dataColor
+    class DEVELOPERS,USERS userColor
 ```
 
-## 🎨 Colorful CI/CD Workflow Process
+## 🔄 Environment Workflow Process
+
+```mermaid
+graph LR
+    subgraph INDIVIDUAL ["👤 Individual Development"]
+        GILI["🟢 gili-feature-*<br/>Personal Dev & Testing"]
+        SIVAN["🔵 sivan-feature-*<br/>Personal Dev & Testing"]
+        SAHAR["🟡 sahar-feature-*<br/>Personal Dev & Testing"]
+        DVIR["🟣 dvir-feature-*<br/>Personal Dev & Testing"]
+    end
+    
+    subgraph SHARED ["🤝 Shared Environments"]
+        DEV["🔧 dev Environment<br/>🔄 Auto-deploy on push<br/>🧪 Integration Testing"]
+        STAGING["🎭 staging Environment<br/>✋ Manual deployment<br/>📋 Pre-production Validation<br/>✅ Quality Assurance"]
+        MAIN["🏭 main Environment<br/>🔄 Auto-deploy on PR merge<br/>🚀 Production Ready"]
+    end
+    
+    %% Individual to Dev
+    GILI ==>|"Merge PR"| DEV
+    SIVAN ==>|"Merge PR"| DEV
+    SAHAR ==>|"Merge PR"| DEV
+    DVIR ==>|"Merge PR"| DEV
+    
+    %% Dev to Staging (Manual)
+    DEV ==>|"Manual Deploy<br/>When ready for validation"| STAGING
+    
+    %% Staging to Main
+    STAGING ==>|"PR Review & Merge<br/>After staging validation"| MAIN
+    
+    %% Styling
+    classDef individualColor fill:#6366F1,stroke:#4F46E5,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef devColor fill:#059669,stroke:#047857,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef stagingColor fill:#D97706,stroke:#B45309,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    classDef prodColor fill:#DC2626,stroke:#B91C1C,stroke-width:3px,color:#FFFFFF,font-weight:bold
+    
+    class GILI,SIVAN,SAHAR,DVIR individualColor
+    class DEV devColor
+    class STAGING stagingColor
+    class MAIN prodColor
+```
+
+## 🌈 Complete System Architecture
 
 ```mermaid
 sequenceDiagram
