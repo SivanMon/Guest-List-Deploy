@@ -63,7 +63,8 @@ jobs:
           # 2) Globally-unique bucket use owner+repo
           owner="$(echo "${REPO_OWNER}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')"
           repo="$(echo "${REPO#*/}"  | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')"
-          bucket="guestlist-tfstate-${owner}-${repo}"
+          actor="$(echo "${GITHUB_ACTOR}" | tr '[:upper:]' '[:lower:]' | tr -cd 'a-z0-9-')"
+          bucket="guestlist-tfstate-${owner}-${repo}-${actor}"
           bucket="${bucket:0:63}"               # S3 bucket length limit
           bucket="${bucket%-}"                  # strip trailing '-'
           TF_STATE_BUCKET="${bucket}"
