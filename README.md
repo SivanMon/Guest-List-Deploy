@@ -1,856 +1,680 @@
-# 🚀 Guest List Deploy
+# 🚀 Guest List Deploy - DevSecOps Infrastructure
 
-Infrastructure as Code (IaC) deployment for the Guest List API using Terraform and AWS EKS. This repository contains all the necessary configurations to deploy our Flask application to a production-ready Kubernetes cluster on AWS.
+**Course:** DevSecOps  
+**Team Members:** Gili, Sivan, Sahar, Dvir  
+**Presenters:** Sivan & Dvir
 
-**Team:** Gili, Sivan, Sahar & Dvir  
-**Course:** DevSecOps Final Project
+Complete Infrastructure-as-Code deployment for the Guest List API using Terraform, AWS EKS, and Kubernetes with automated CI/CD pipelines supporting multiple environments.
 
----
+## 📋 Table of Contents
 
-## 🏗️ Infrastructure Overview
+- [Project Overview](#-project-overview)
+- [Infrastructure Architecture](#-infrastructure-architecture)
+- [Environment Strategy](#-environment-strategy)
+- [Technology Stack](#-technology-stack)
+- [Repository Structure](#-repository-structure)
+- [Deployment Workflow](#-deployment-workflow)
+- [AWS Resources](#-aws-resources)
+- [Kubernetes Configuration](#-kubernetes-configuration)
+- [CI/CD Pipeline](#-cicd-pipeline)
+- [Environment Management](#-environment-management)
+- [Local Development](#-local-development)
+- [Security & Best Practices](#-security--best-practices)
+- [Monitoring & Observability](#-monitoring--observability)
+- [Cost Optimization](#-cost-optimization)
+- [Troubleshooting](#-troubleshooting)
 
-### Architecture Components
+## 🎯 Project Overview
 
-- **AWS EKS**: Managed Kubernetes cluster with auto-scaling
-- **DynamoDB**: Serverless NoSQL database for guest data
-- **VPC**: Custom networking with public/private subnets
-- **Load Balancer**: External access with health checks
-- **IAM**: Secure role-based access control
-- **Terraform**: Infrastructure as Code with remote state management
+This repository contains the complete infrastructure deployment configuration for our Guest List API project. It demonstrates advanced DevSecOps practices including Infrastructure as Code, automated deployment pipelines, and multi-environment management using industry-standard tools.
 
-### Environment Strategy
+**Key Capabilities:**
+- **Multi-Environment Deployment:** Individual student environments plus shared dev/staging/prod
+- **Infrastructure as Code:** Complete AWS infrastructure managed through Terraform
+- **Container Orchestration:** Kubernetes deployment on AWS EKS
+- **Automated CI/CD:** GitHub Actions with cross-repository integration
+- **Security:** IAM roles, security groups, and encrypted state management
+- **Scalability:** Auto-scaling groups and load balancing
 
-Our deployment supports multiple environments with isolated resources:
+## 🏗️ Infrastructure Architecture
 
-- **Student Environments**: `gili`, `sivan`, `sahar`, `dvir` - Individual development
-- **Shared Environments**: `dev`, `staging`, `main` - Team collaboration
-- **Feature Branches**: Automatic deployment for student feature work
+```
+                                    AWS Cloud Environment
+    ┌─────────────────────────────────────────────────────────────────────────────────┐
+    │                                                                                 │
+    │   ┌─────────────────┐                            ┌─────────────────────────┐   │
+    │   │   VPC Network   │                            │     DynamoDB Tables     │   │
+    │   │                 │                            │                         │   │
+    │   │  ┌──────────┐   │     ┌──────────────────┐   │  ┌─────────────────┐    │   │
+    │   │  │Public    │   │     │                  │   │  │ GuestList-gili  │    │   │
+    │   │  │Subnets   │───┼────▶│  EKS Cluster     │◀──┼──│ GuestList-sivan │    │   │
+    │   │  │(2x AZs)  │   │     │                  │   │  │ GuestList-sahar │    │   │
+    │   │  └──────────┘   │     │ ┌─────────────┐  │   │  │ GuestList-dvir  │    │   │
+    │   │                 │     │ │Worker Nodes │  │   │  │ GuestList-dev   │    │   │
+    │   │  ┌──────────┐   │     │ │(t3.small)   │  │   │  │ GuestList-main  │    │   │
+    │   │  │Private   │───┼─────│ │Auto Scaling │  │   │  └─────────────────┘    │   │
+    │   │  │Subnets   │   │     │ └─────────────┘  │   │                         │   │
+    │   │  │(2x AZs)  │   │     └──────────────────┘   └─────────────────────────┘   │
+    │   │  └──────────┘   │              │                                           │
+    │   │                 │              │                                           │
+    │   │  ┌──────────┐   │     ┌────────▼─────────┐                                │
+    │   │  │Internet  │───┼─────│ Load Balancer    │                                │
+    │   │  │Gateway   │   │     │ (ALB/Classic)    │                                │
+    │   │  └──────────┘   │     └──────────────────┘                                │
+    │   │                 │                                                         │
+    │   └─────────────────┘                                                         │
+    │                                                                               │
+    └─────────────────────────────────────────────────────────────────────────────────┘
 
----
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-1. **AWS CLI** configured with appropriate credentials
-2. **Terraform** (>= 1.0.0, < 1.10.0)
-3. **kubectl** for cluster management
-4. **Docker Hub** access for container images
-
-### Initial Setup
-
-```bash
-# Clone the repository
-git clone https://github.com/giligalili/Guest-List-Deploy.git
-cd Guest-List-Deploy
-
-# Configure your environment
-export AWS_REGION=us-east-1
-export ENVIRONMENT=gili  # or sivan, sahar, dvir, dev, staging, main
+    ┌─────────────────────────────────────────────────────────────────────────────────┐
+    │                        CI/CD Pipeline Flow                                     │
+    │                                                                                 │
+    │  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐    ┌─────────────┐  │
+    │  │Guest-List-API│────▶│GitHub Actions│────▶│Docker Hub    │    │AWS EKS      │  │
+    │  │Repository    │    │CI/CD         │    │Image Registry│    │Deployment   │  │
+    │  │              │    │              │    │              │    │             │  │
+    │  │- Code Push   │    │- Build Test  │    │- Tagged      │    │- Rolling    │  │
+    │  │- Branch Merge│    │- Integration │    │  Images      │    │  Updates    │  │
+    │  │              │    │- Publish     │    │              │    │- Health     │  │
+    │  └──────────────┘    └──────┬───────┘    └──────────────┘    │  Checks     │  │
+    │                             │                                │             │  │
+    │  ┌──────────────┐    ┌──────▼───────┐    ┌──────────────┐    │             │  │
+    │  │Guest-List    │◀───│Repository    │    │Terraform     │────▶│             │  │
+    │  │Deploy Repo   │    │Dispatch      │    │Apply         │    │             │  │
+    │  │              │    │              │    │              │    │             │  │
+    │  │- Terraform   │    │- Cross-repo  │    │- Provision   │    └─────────────┘  │
+    │  │- K8s Configs │    │  Triggers    │    │- Deploy      │                     │
+    │  │- Automation  │    │- Environment │    │- Update      │                     │
+    │  └──────────────┘    └──────────────┘    └──────────────┘                     │
+    └─────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### State Backend Setup (First Time Only)
+## 🌍 Environment Strategy
 
-```bash
-# Create Terraform backend resources
-terraform init
-terraform apply -var="create_state_backend=true" \
-  -var="state_bucket_name=guestlist-tfstate-${ENVIRONMENT}"
+We implement a comprehensive multi-environment strategy supporting both individual development and shared environments:
+
+```
+Development Flow:
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│ Student Feature │    │   Integration   │    │   Production    │
+│  Environments   │    │   Environment   │    │   Environment   │
+│                 │    │                 │    │                 │
+│  ┌───────────┐  │    │  ┌───────────┐  │    │  ┌───────────┐  │
+│  │   gili    │  │    │  │    dev    │  │    │  │   main    │  │
+│  ├───────────┤  │────▶  ├───────────┤  │────▶  ├───────────┤  │
+│  │   sivan   │  │    │  │  Shared   │  │    │  │Production │  │
+│  ├───────────┤  │    │  │ Testing   │  │    │  │ Stable    │  │
+│  │   sahar   │  │    │  │ Integration│  │    │  │ Release   │  │
+│  ├───────────┤  │    │  └───────────┘  │    │  └───────────┘  │
+│  │   dvir    │  │    │                 │    │                 │
+│  └───────────┘  │    └─────────────────┘    └─────────────────┘
+└─────────────────┘
 ```
 
-### Deploy Infrastructure
+**Environment Configuration:**
+- **Individual (gili, sivan, sahar, dvir):** Personal development and testing
+- **dev:** Shared integration environment for team collaboration
+- **main:** Production environment for stable releases
 
-```bash
-# Initialize with remote state
-terraform init -reconfigure \
-  -backend-config="bucket=guestlist-tfstate-${ENVIRONMENT}" \
-  -backend-config="key=envs/${ENVIRONMENT}/terraform.tfstate" \
-  -backend-config="region=${AWS_REGION}"
+## 🛠️ Technology Stack
 
-# Plan deployment
-terraform plan -var="environment=${ENVIRONMENT}" \
-  -var="aws_access_key_id=${AWS_ACCESS_KEY_ID}" \
-  -var="aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}"
+**Infrastructure & Orchestration:**
+- **Terraform** v1.9.8 - Infrastructure as Code
+- **AWS EKS** v1.28 - Kubernetes cluster management
+- **Kubernetes** - Container orchestration
+- **Docker** - Containerization platform
 
-# Apply changes
-terraform apply -auto-approve
-```
+**AWS Services:**
+- **EKS** - Managed Kubernetes service
+- **DynamoDB** - NoSQL database
+- **VPC** - Virtual Private Cloud networking
+- **IAM** - Identity and Access Management
+- **S3** - Terraform state storage
+- **EC2** - Worker node instances
 
----
+**CI/CD & Automation:**
+- **GitHub Actions** - Pipeline automation
+- **S3 + DynamoDB** - Terraform remote state management
+- **Repository Dispatch** - Cross-repo communication
 
 ## 📁 Repository Structure
 
 ```
-.
-├── backend.tf                    # Terraform remote state configuration
-├── main.tf                      # VPC, networking, and core infrastructure
-├── eks.tf                       # EKS cluster and node group definitions
-├── dynamodb.tf                  # DynamoDB table configuration
-├── kubernetes.tf                # Kubernetes deployments and services
-├── iam.tf                       # IAM roles and policies (commented)
-├── variables.tf                 # Input variables and configuration
-├── outputs.tf                   # Output values and connection info
-├── provider.tf                  # AWS provider configuration
-├── state-bucket.tf              # S3 backend bucket creation
-├── clean-terraform.yml          # GitHub Actions CI/CD pipeline
-├── guestlistapi-LB-service.yaml # Kubernetes LoadBalancer service
-└── .gitignore                   # Comprehensive gitignore for security
+Guest-List-Deploy/
+├── backend.tf                 # Terraform remote state configuration
+├── main.tf                    # VPC, subnets, networking infrastructure  
+├── eks.tf                     # EKS cluster and node group definitions
+├── dynamodb.tf                # DynamoDB table resources
+├── kubernetes.tf              # Kubernetes deployments and services
+├── variables.tf               # Input variables and configuration
+├── outputs.tf                 # Infrastructure outputs and endpoints
+├── provider.tf                # AWS provider configuration
+├── state-bucket.tf            # S3 state bucket creation (optional)
+├── iam.tf                     # IAM roles and policies (commented)
+├── .github/workflows/
+│   └── clean-terraform.yml    # CI/CD pipeline for deployment
+├── manifests/
+│   ├── guestlistapi-LB-service.yaml      # Load balancer service
+│   └── guestlistapideploy.yaml.tftpl     # Deployment template
+└── .gitignore                 # Git ignore patterns
 ```
 
----
+## 🔄 Deployment Workflow
 
-## 🔧 Infrastructure Components
+### Cross-Repository Integration
 
-### VPC and Networking (`main.tf`)
+Our deployment process integrates seamlessly with the API repository:
 
-**Custom VPC Setup:**
-- CIDR: 10.0.0.0/16 (65,536 IP addresses)
-- **Public Subnets**: 10.0.1.0/24, 10.0.2.0/24 (for load balancers)
-- **Private Subnets**: 10.0.10.0/24, 10.0.11.0/24 (for worker nodes)
-- **NAT Gateway**: Single gateway for cost optimization
-- **Internet Gateway**: Public internet access
+1. **API Development:**
+   ```bash
+   # Developer pushes to feature branch
+   git push origin sivan-feature-authentication
+   
+   # CI builds and tests in Guest-List-API
+   # Image tagged as sivanmonshi/guestlistapi:sivan-feature-abc123
+   ```
 
-**High Availability:**
-- Multi-AZ deployment across 2 availability zones
-- Separate route tables for public and private subnets
-- Security groups with minimal required access
+2. **Integration Testing:**
+   ```bash
+   # Merge to dev branch triggers deployment
+   git push origin dev
+   
+   # Repository dispatch sent to Guest-List-Deploy
+   # Terraform plan executed for dev environment
+   ```
 
-### EKS Cluster (`eks.tf`)
+3. **Production Deployment:**
+   ```bash
+   # PR merge to main triggers production deployment
+   git push origin main
+   
+   # Repository dispatch sent to Guest-List-Deploy  
+   # Terraform apply executed for main environment
+   ```
 
-**Cluster Configuration:**
-- Kubernetes version: 1.28
-- **Control Plane**: Fully managed by AWS
-- **Node Group**: t3.small instances (cost-optimized)
-- **Scaling**: 1-3 nodes with desired capacity of 2
-- **Logging**: API and audit logs enabled
+### Complete Pipeline Trigger Matrix
 
-**IAM Integration:**
-- Option to use existing IAM roles or create new ones
-- Support for both managed and pre-existing role scenarios
-- Proper policy attachments for EKS functionality
+| Trigger Source       | Event Type        | Environment | Docker Image Resolution | Terraform Operation | Description                    |
+|----------------------|-------------------|-------------|-------------------------|-------------------|--------------------------------|
+| **API Repository**   | Push to `dev`     | `dev`       | `dev` tag              | `terraform plan`  | Integration testing deployment |
+| **API Repository**   | Push to `main`    | `main`      | `latest` tag           | None              | Production image build only    |
+| **API Repository**   | PR to `main`      | `main`      | `latest` tag           | `terraform apply` | Production deployment          |
+| **API Repository**   | Manual `dev`      | `dev`       | `dev` tag              | `terraform plan`  | Manual dev planning            |
+| **API Repository**   | Manual `staging`  | `staging`   | `dev` tag              | `terraform apply` | Pre-production validation      |
+| **API Repository**   | Manual `main`     | `main`      | `latest` tag           | `terraform apply` | Manual production deployment   |
+| **Deploy Repository** | Manual dispatch | Any         | Latest available       | `plan`/`apply`/`destroy` | Direct infrastructure management |
+| **Deploy Repository** | PR to main      | N/A         | N/A                    | `terraform plan`  | Infrastructure change preview  |
 
-### DynamoDB (`dynamodb.tf`)
+### Repository Dispatch Integration
 
-**Database Setup:**
-- **Table Name**: `GuestList-{environment}`
-- **Primary Key**: `id` (String)
-- **Billing**: Pay-per-request (serverless)
-- **Tags**: Environment and student identification
+| API Event                | Dispatch Type  | Deploy Action       | Payload                   | Result                   |
+|--------------------------|----------------|---------------------|---------------------------|--------------------------|
+| Push to `dev` branch     | `deploy_plan`  | Plan infrastructure | `{"environment": "dev"}`  | Dev environment planning |
+| Manual run with `dev`    | `deploy_plan`  | Plan infrastructure | `{"environment": "dev"}`  | Dev environment planning |
+| Manual run with `staging` | `deploy_apply` | Apply infrastructure | `{"environment": "staging"}` | Staging deployment     |
+| PR to `main` branch      | `deploy_apply` | Apply infrastructure | `{"environment": "main"}` | Production deployment    |
+| Manual run with `main`   | `deploy_apply` | Apply infrastructure | `{"environment": "main"}` | Production deployment    |
 
-### Kubernetes Deployments (`kubernetes.tf`)
+### Cross-Repository Webhook Flow
 
-**Application Deployment:**
-- **Namespace**: `guestlist` for all environments
-- **Replicas**: 3 for high availability
-- **Resource Limits**: CPU and memory constraints
-- **Health Checks**: Readiness and liveness probes
-- **Environment Variables**: AWS credentials via Kubernetes secrets
+```mermaid
+sequenceDiagram
+    participant API as API Repository
+    participant GHA as GitHub Actions
+    participant Deploy as Deploy Repository
+    participant AWS as AWS Cloud
 
-**Load Balancer Service:**
-- **Type**: LoadBalancer (AWS ELB integration)
-- **Port Mapping**: External 9999 → Internal 1111
-- **Health Checks**: Automatic endpoint monitoring
-
----
-
-## 🌍 Environment Management
-
-### State Management Strategy
-
-Each environment maintains isolated Terraform state:
-
+    API->>GHA: 1. Push to dev/main
+    GHA->>GHA: 2. Build & test API
+    GHA->>GHA: 3. Publish Docker image
+    GHA->>Deploy: 4. Repository dispatch event
+    Deploy->>Deploy: 5. Trigger clean-terraform.yml
+    Deploy->>AWS: 6. Terraform plan/apply
+    AWS-->>Deploy: 7. Infrastructure ready
+    Deploy-->>API: 8. Deployment complete
 ```
-S3 Structure:
-├── guestlist-tfstate-gili/envs/gili/terraform.tfstate
-├── guestlist-tfstate-sivan/envs/sivan/terraform.tfstate  
-├── guestlist-tfstate-sahar/envs/sahar/terraform.tfstate
-├── guestlist-tfstate-dvir/envs/dvir/terraform.tfstate
-├── guestlist-tfstate-dev/envs/dev/terraform.tfstate
-├── guestlist-tfstate-staging/envs/staging/terraform.tfstate
-└── guestlist-tfstate-main/envs/main/terraform.tfstate
-```
 
-### Resource Naming Convention
+### Environment-Specific Triggers
 
-Resources are tagged and named consistently:
-- **Pattern**: `{resource-type}-{environment}`
-- **Example**: `GuestList-gili`, `guestlist-cluster-sivan`
-- **Tags**: Environment, Student, Project identification
+| Environment | Trigger Source     | Image Tag Pattern    | Auto-Deploy | Manual Override | Purpose                   |
+|-------------|--------------------|----------------------|-------------|-----------------|---------------------------|
+| `gili`      | Manual only        | `gili-feature-*`     | No          | Yes             | Individual development    |
+| `sivan`     | Manual only        | `sivan-feature-*`    | No          | Yes             | Individual development    |
+| `sahar`     | Manual only        | `sahar-feature-*`    | No          | Yes             | Individual development    |
+| `dvir`      | Manual only        | `dvir-feature-*`     | No          | Yes             | Individual development    |
+| `dev`       | API push/manual    | `dev`                | Yes         | Yes             | Integration testing       |
+| `staging`   | Manual only        | `dev`                | No          | Yes             | Pre-production validation |
+| `main`      | API PR/manual      | `latest`             | Yes         | Yes             | Production deployment     |
 
-### Variable Configuration
+## ☁️ AWS Resources
 
-**Core Variables** (defined in `variables.tf`):
+### Networking Infrastructure
 ```hcl
-variable "environment" {
-  description = "Environment name (gili, sivan, sahar, dvir, dev, staging, main)"
-  type        = string
-}
-
-variable "aws_region" {
-  description = "AWS region for deployment"  
-  type        = string
-  default     = "us-east-1"
-}
-
-variable "cluster_name" {
-  description = "Name of the EKS cluster"
-  type        = string
-  default     = "guestlist-cluster"
-}
+# VPC with public and private subnets across 2 AZs
+VPC: 10.0.0.0/16
+├── Public Subnets:  10.0.1.0/24, 10.0.2.0/24
+├── Private Subnets: 10.0.10.0/24, 10.0.11.0/24
+├── Internet Gateway: Internet access for public subnets
+├── NAT Gateway: Outbound internet for private subnets  
+└── Route Tables: Traffic routing configuration
 ```
 
----
+### EKS Cluster Configuration
+```yaml
+Cluster:
+  name: guestlist-cluster
+  version: "1.28"
+  endpoint_access:
+    private: true
+    public: true
+  logging: ["api", "audit"]
 
-## 🤖 CI/CD Pipeline - Complete Workflow Analysis
+Node Group:
+  instance_type: t3.small
+  capacity:
+    min: 1
+    desired: 2  
+    max: 3
+  subnets: private_subnets
+```
 
-### Advanced GitHub Actions Pipeline (`clean-terraform.yml`)
+### DynamoDB Tables
+```
+Table Pattern: GuestList-{environment}
+Examples:
+- GuestList-gili
+- GuestList-sivan  
+- GuestList-sahar
+- GuestList-dvir
+- GuestList-dev
+- GuestList-main
+```
 
-Our deployment pipeline is a sophisticated multi-stage process that handles environment resolution, infrastructure provisioning, and health validation.
+## ⚙️ Kubernetes Configuration
 
-#### **Workflow Triggers & Input Management**
+### Namespace Structure
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: guestlist
+```
+
+### Deployment Specification
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: guestlist-deployment
+  namespace: guestlist
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: guestlist-api
+  template:
+    spec:
+      containers:
+      - name: guestlist-container
+        image: sivanmonshi/guestlistapi:${IMAGE_TAG}
+        ports:
+        - containerPort: 1111
+        env:
+        - name: DDB_TABLE
+          valueFrom:
+            secretKeyRef:
+              name: guestlist-aws
+              key: DDB_TABLE
+```
+
+### Service & Load Balancing
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: guestlist-service
+  namespace: guestlist
+spec:
+  type: LoadBalancer
+  selector:
+    app: guestlist-api
+  ports:
+  - port: 9999
+    targetPort: 1111
+```
+
+### Autoscaling Configuration
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: guestlist-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: guestlist-deployment
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+```
+
+## 🔄 CI/CD Pipeline
+
+### GitHub Actions Workflow
+
+Our `clean-terraform.yml` workflow provides comprehensive deployment automation with multiple trigger types:
+
+**Trigger Types:**
+1. **workflow_dispatch:** Manual execution with configurable parameters
+2. **repository_dispatch:** Cross-repository automation from API repo
+3. **pull_request:** Infrastructure change validation
+
+**Repository Dispatch Events:**
+- `deploy_plan`: Triggered by API dev branch activities
+- `deploy_apply`: Triggered by API production activities
+
+**Workflow Stages:**
+
+1. **Environment Resolution:**
+   - Determines target environment from trigger type and payload
+   - Resolves Docker image tag based on environment and availability
+   - Sets up S3 state bucket naming convention with owner/repo uniqueness
+
+2. **Environment Configuration:**
+   - Creates S3 state bucket if needed (idempotent operation)
+   - Creates DynamoDB lock table for state management  
+   - Configures AWS credentials from GitHub environment secrets
+
+3. **Terraform Execution:**
+   - Initializes with remote state configuration
+   - Resolves latest Docker image tag for deployment using Docker Hub API
+   - Executes plan/apply/destroy based on trigger and parameters
+   - Validates deployment health checks and load balancer accessibility
+
+### Repository Dispatch Configuration
+
+**API Repository Dispatch Calls:**
+```bash
+# Development deployment trigger
+curl -X POST \
+  -H "Authorization: token ${{ secrets.REPO_DISPATCH_TOKEN }}" \
+  -H "Accept: application/vnd.github+json" \
+  https://api.github.com/repos/SivanMon/Guest-List-Deploy/dispatches \
+  -d '{"event_type":"deploy_plan","client_payload":{"environment":"dev"}}'
+
+# Production deployment trigger  
+curl -X POST \
+  -H "Authorization: token ${{ secrets.REPO_DISPATCH_TOKEN }}" \
+  -H "Accept: application/vnd.github+json" \
+  https://api.github.com/repos/SivanMon/Guest-List-Deploy/dispatches \
+  -d '{"event_type":"deploy_apply","client_payload":{"environment":"main"}}'
+```
+
+**Deploy Repository Event Handlers:**
 ```yaml
 on:
-  push:
-    branches: [ main ]           # Automatic production deployment
-  workflow_dispatch:             # Manual deployment with options
+  repository_dispatch:
+    types: [deploy_plan, deploy_apply]
+  workflow_dispatch:
     inputs:
-      action:
-        type: choice
-        options: [plan, apply, destroy]
-      environment: 
-        type: choice
-        options: [sivan, dvir, gili, sahar, dev, staging, main]
+      action: [plan, apply, destroy]
+      environment: [sivan, dvir, gili, sahar, dev, main]
 ```
 
-**Trigger Strategy:**
-- **Automatic**: Push to `main` → Production deployment
-- **Manual**: Developers can deploy to any environment with specific actions
-- **Safety**: Manual destroy prevents accidental resource deletion
-
----
-
-### 🎯 Stage 1: Environment Determination (`determine-environment`)
-
-**Dynamic Environment Resolution:**
+### Image Tag Resolution Logic
 ```bash
-# Automatic environment detection
-if [[ "${GITHUB_EVENT_NAME}" == "push" && "${GITHUB_REF_NAME}" == "main" ]]; then
-  ENVIRONMENT="main"
-else
-  # Manual selection with fallback
-  ENVIRONMENT="${{ github.event.inputs.environment || 'dev' }}"
-fi
+Environment → Image Tag:
+├── gili/sivan/sahar/dvir → {student}-feature-{sha7}
+├── dev → dev  
+├── main → latest
+└── fallback → dev
 ```
 
-**Resource Naming Strategy:**
-```bash
-# State bucket naming for isolation
-case "${ENVIRONMENT}" in
-  sivan|dvir|sahar|gili)
-    TF_STATE_BUCKET="guestlist-tfstate-${ENVIRONMENT}-feature"
-    ;;
-  *)
-    TF_STATE_BUCKET="guestlist-tfstate-${ENVIRONMENT}"
-    ;;
-esac
-
-# State key path: envs/{environment}/terraform.tfstate
-TF_STATE_KEY="envs/${ENVIRONMENT}/terraform.tfstate"
-```
-
-**Docker Image Tag Resolution:**
-```bash
-IMAGE_REPO="giligalili/guestlistapi"
-case "${ENVIRONMENT}" in
-  sivan|dvir|sahar|gili)
-    IMAGE_TAG_PREFIX="${ENVIRONMENT}-feature-"  # Dynamic latest feature
-    ;;
-  dev|staging|main)
-    IMAGE_TAG_PREFIX="${ENVIRONMENT}"           # Fixed environment tags
-    ;;
-esac
-```
-
-**Output Variables:**
-- `environment`: Target deployment environment
-- `namespace`: Kubernetes namespace (`guestlist`)  
-- `tf_state_bucket`: Environment-specific S3 bucket
-- `tf_state_key`: State file path within bucket
-- `image_repo`: Docker registry repository
-- `image_tag_prefix`: Tag pattern for image resolution
-
----
-
-### 🏗️ Stage 2: Infrastructure Configuration (`configure-environment`)
-
-**AWS Credentials Setup:**
-```yaml
-- name: Configure AWS credentials
-  uses: aws-actions/configure-aws-credentials@v4
-  with:
-    aws-region: ${{ env.AWS_REGION }}
-    aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-    aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-```
-
-**Idempotent S3 Backend Creation:**
-```bash
-# Create S3 bucket with proper configuration
-if aws s3api head-bucket --bucket "$B" 2>/dev/null; then
-  echo "Bucket $B exists."
-else
-  # Regional bucket creation
-  if [[ "$R" == "us-east-1" ]]; then
-    aws s3api create-bucket --bucket "$B"
-  else
-    aws s3api create-bucket --bucket "$B" \
-      --create-bucket-configuration LocationConstraint="$R"
-  fi
-  
-  # Security hardening
-  aws s3api put-bucket-versioning --bucket "$B" \
-    --versioning-configuration Status=Enabled
-  aws s3api put-bucket-encryption --bucket "$B" \
-    --server-side-encryption-configuration '{
-      "Rules":[{"ApplyServerSideEncryptionByDefault":{"SSEAlgorithm":"AES256"}}]}'
-  aws s3api put-public-access-block --bucket "$B" \
-    --public-access-block-configuration \
-    BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true
-fi
-```
-
-**DynamoDB Lock Table Creation:**
-```bash
-# Terraform state locking
-aws dynamodb create-table \
-  --table-name "terraform-locks" \
-  --attribute-definitions AttributeName=LockID,AttributeType=S \
-  --key-schema AttributeName=LockID,KeyType=HASH \
-  --billing-mode PAY_PER_REQUEST
-aws dynamodb wait table-exists --table-name "terraform-locks"
-```
-
-**Security Features:**
-- **Encryption**: S3 buckets encrypted at rest with AES256
-- **Versioning**: State file history for rollback capability
-- **Public Access Block**: Prevents accidental public exposure
-- **State Locking**: DynamoDB prevents concurrent modifications
-
----
-
-### 🚀 Stage 3: Terraform Deployment (`terraform`)
-
-**Environment Setup & Variables:**
-```bash
-# Environment-specific configuration
-ENVIRONMENT: ${{ needs.determine-environment.outputs.environment }}
-TF_STATE_BUCKET: ${{ needs.determine-environment.outputs.tf_state_bucket }}
-TF_VAR_cluster_role_name: guestlist-cluster-cluster-role
-TF_VAR_node_group_role_name: guestlist-cluster-node-group-role
-```
-
-**Dynamic Docker Image Resolution:**
-```bash
-# Resolve latest feature image for students
-case "${ENVIRONMENT}" in
-  sivan|dvir|sahar|gili)
-    # Query Docker Hub API for latest feature tag
-    tag="$(curl -fsSL "https://hub.docker.com/v2/repositories/${repo}/tags?page_size=100" \
-      | jq -r '.results[] | select(.name | startswith("'"${prefix}"'")) | .name' | head -n1)"
-    ;;
-  dev|staging|main)
-    tag="${prefix}"  # Use fixed environment tag
-    ;;
-esac
-```
-
-**Docker Hub API Integration:**
-- **Live Tag Resolution**: Queries Docker Hub for latest feature builds
-- **Fallback Strategy**: Default tags for stable environments
-- **Error Handling**: Pipeline fails if image tag cannot be resolved
-
-**Terraform Initialization:**
-```bash
-terraform init -input=false -reconfigure \
-  -backend-config="bucket=${TF_STATE_BUCKET}" \
-  -backend-config="key=${TF_STATE_KEY}" \
-  -backend-config="region=${AWS_REGION}" \
-  -backend-config="dynamodb_table=terraform-locks"
-```
-
-**Plan Generation:**
-```bash
-terraform plan -input=false \
-  -var="environment=${ENVIRONMENT}" \
-  -var="aws_region=${AWS_REGION}" \
-  -var="namespace=${NAMESPACE}" \
-  -var="image_tag=${{ steps.imagetag.outputs.image_tag }}" \
-  -var="aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" \
-  -var="aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-  -out=tfplan-${ENVIRONMENT}
-```
-
-**Conditional Execution Logic:**
-```yaml
-# Plan: Manual 'plan' action OR push to main
-- name: Terraform Plan
-  if: |
-    (github.event_name == 'workflow_dispatch' && inputs.action == 'plan') ||
-    (github.event_name == 'push' && github.ref == 'refs/heads/main')
-
-# Apply: Manual 'apply' action OR push to main  
-- name: Terraform Apply
-  if: |
-    (github.event_name == 'workflow_dispatch' && inputs.action == 'apply') ||
-    (github.event_name == 'push' && github.ref == 'refs/heads/main')
-
-# Destroy: Manual 'destroy' action ONLY
-- name: Terraform Destroy
-  if: ${{ github.event_name == 'workflow_dispatch' && inputs.action == 'destroy' }}
-```
-
----
-
-### 🏥 Stage 4: Health Validation & Monitoring
-
-**LoadBalancer Endpoint Discovery:**
-```bash
-# Try to read IP first; fallback to hostname
-LB="$(terraform output -raw load_balancer_ip 2>/dev/null || true)"
-USE_DNS=0
-if [[ -z "${LB}" ]]; then
-  LB="$(terraform output -raw load_balancer_hostname 2>/dev/null || true)"
-  USE_DNS=1
-fi
-```
-
-**DNS Resolution Waiting:**
-```bash
-# Wait for DNS propagation (AWS ELB hostnames)
-if [[ "${USE_DNS}" -eq 1 ]]; then
-  echo "Waiting for DNS to resolve for ${LB}..."
-  for i in {1..120}; do
-    if getent hosts "${LB}" >/dev/null 2>&1; then
-      echo "DNS resolved on attempt #${i}"
-      break
-    fi
-    sleep 5
-    [[ $i -eq 120 ]] && { echo "Timed out waiting for DNS"; exit 1; }
-  done
-fi
-```
-
-**Comprehensive Health Checking:**
-```bash
-# Multi-endpoint health validation
-BASE_URL="http://${LB}:9999"
-ATTEMPTS=30
-SLEEP=10
-
-for i in $(seq 1 $ATTEMPTS); do
-  # Primary health check
-  CODE="$(curl -sS -m 5 -o /dev/null -w '%{http_code}' "${BASE_URL}/healthz" || echo "000")"
-  if [[ "$CODE" -ge 200 && "$CODE" -lt 400 ]]; then
-    echo "OK: HTTP $CODE from ${BASE_URL}/healthz"
-    exit 0
-  fi
-  
-  # Fallback root check
-  CODE_ROOT="$(curl -sS -m 5 -o /dev/null -w '%{http_code}' "${BASE_URL}/" || echo "000")"
-  if [[ "$CODE_ROOT" -ge 200 && "$CODE_ROOT" -lt 400 ]]; then
-    echo "OK: HTTP $CODE_ROOT from ${BASE_URL}/"
-    exit 0
-  fi
-  
-  echo "Attempt $i/$ATTEMPTS: healthz=$CODE root=$CODE_ROOT — retrying in ${SLEEP}s..."
-  sleep $SLEEP
-done
-```
-
-**Health Check Features:**
-- **Dual Endpoint Testing**: `/healthz` (Kubernetes probe) + `/` (application)
-- **Timeout Handling**: 5-second curl timeout per attempt
-- **Progressive Retry**: 30 attempts with 10-second intervals (5-minute total)
-- **DNS Awareness**: Waits for AWS ELB hostname resolution
-- **Detailed Logging**: Reports HTTP codes and attempt progress
-
----
-
-### 🔄 Advanced Workflow Features
-
-**Multi-Environment GitHub Environments:**
-```yaml
-environment: ${{ needs.determine-environment.outputs.environment }}
-```
-- **Environment Protection**: GitHub environment-specific secrets
-- **Approval Gates**: Manual approval for sensitive environments
-- **Variable Scoping**: Environment-specific configuration
-
-**Terraform Variable Injection:**
-```bash
-# Comprehensive variable passing
-terraform apply -input=false -auto-approve \
-  -var="environment=${ENVIRONMENT}" \
-  -var="aws_region=${AWS_REGION}" \
-  -var="namespace=${NAMESPACE}" \
-  -var="image_tag=${{ steps.imagetag.outputs.image_tag }}" \
-  -var="aws_access_key_id=${{ secrets.AWS_ACCESS_KEY_ID }}" \
-  -var="aws_secret_access_key=${{ secrets.AWS_SECRET_ACCESS_KEY }}"
-```
-
-**Plan Reuse Logic:**
-```bash
-# Use generated plan if available, otherwise apply directly
-if [[ -f "tfplan-${ENVIRONMENT}" ]]; then
-  terraform apply -input=false -auto-approve "tfplan-${ENVIRONMENT}"
-else
-  terraform apply -input=false -auto-approve [variables...]
-fi
-```
-
----
-
-### 🎯 Workflow Execution Patterns
-
-**Production Deployment (Automatic):**
-```
-git push origin main
-└── determine-environment (ENVIRONMENT=main)
-    └── configure-environment (production secrets)
-        └── terraform (plan + apply)
-            └── health-validation (production LB)
-```
-
-**Development Deployment (Manual):**
-```
-Workflow Dispatch: environment=gili, action=apply
-└── determine-environment (ENVIRONMENT=gili)
-    └── configure-environment (gili-feature bucket)
-        └── terraform (apply with gili-feature-{sha} image)
-            └── health-validation (development LB)
-```
-
-**Infrastructure Planning (Manual):**
-```
-Workflow Dispatch: environment=staging, action=plan
-└── determine-environment (ENVIRONMENT=staging)
-    └── configure-environment (staging bucket)
-        └── terraform (plan only, no apply)
-```
-
-**Resource Cleanup (Manual):**
-```
-Workflow Dispatch: environment=dev, action=destroy
-└── determine-environment (ENVIRONMENT=dev)
-    └── configure-environment (dev bucket)
-        └── terraform (destroy with confirmation)
-```
-
-### 🔒 Security & Best Practices
-
-**Secrets Management:**
-- GitHub repository secrets for AWS credentials
-- Environment-specific secret scoping
-- No hardcoded credentials in workflow files
-
-**State Security:**
-- S3 bucket encryption and versioning
-- DynamoDB locking prevents race conditions
-- Private bucket configuration blocks public access
-
-**Failure Handling:**
-- Explicit error codes and logging
-- Container cleanup on test failure
-- Terraform state protection with locks
-
-**Resource Isolation:**
-- Environment-specific S3 buckets and DynamoDB tables
-- Kubernetes namespace separation
-- Unique resource tagging for identification
-
----
-
-## 🔐 Security Configuration
-
-### IAM Role Management
-
-**Flexible IAM Strategy:**
-- **Option 1**: Pre-existing roles (default, `manage_iam = false`)
-- **Option 2**: Terraform-managed roles (`manage_iam = true`)
-
-**Required Roles:**
+### State Management
 ```hcl
-variable "cluster_role_name" {
-  default = "guestlist-cluster-cluster-role"
-}
-
-variable "node_group_role_name" {  
-  default = "guestlist-cluster-node-group-role"
-}
+Backend Configuration:
+├── S3 Bucket: guestlist-tfstate-{owner}-{repo}
+├── Key Pattern: envs/{environment}/terraform.tfstate
+├── DynamoDB Lock: terraform-locks
+├── Encryption: AES256
+└── Versioning: Enabled
 ```
 
-### Secrets Management
+## 🌐 Environment Management
 
-**Kubernetes Secrets:**
-- AWS credentials stored as Kubernetes secrets
-- Environment variables injected into containers
-- No hardcoded credentials in code
+### Environment Secrets Configuration
 
-**GitHub Secrets Required:**
-- `AWS_ACCESS_KEY_ID`: AWS programmatic access
-- `AWS_SECRET_ACCESS_KEY`: AWS secret key
+Each environment requires specific GitHub environment secrets:
+
+```yaml
+Environment Secrets Required:
+├── AWS_ACCESS_KEY_ID      # AWS credentials
+├── AWS_SECRET_ACCESS_KEY  # AWS credentials  
+└── Additional configs per environment basis
+```
+
+### Environment-Specific Configurations
+
+**Development Environments (gili, sivan, sahar, dvir):**
+- Individual DynamoDB tables
+- Isolated infrastructure  
+- Feature-branch image tags
+- Cost-optimized resources
+
+**Shared Development (dev):**
+- Integration testing
+- Stable dev image tags
+- Team collaboration space
+- Automated testing integration
+
+**Production (main):**
+- Stable latest image tags
+- Production-grade monitoring
+- Enhanced security policies
+- Backup and disaster recovery
+
+## 💻 Local Development
+
+### Prerequisites Setup
+```bash
+# Install required tools
+brew install terraform kubectl awscli
+
+# or using package managers:
+# apt install terraform kubectl awscli
+# choco install terraform kubernetes-cli awscli
+```
+
+### Local Terraform Testing
+```bash
+# Clone the deploy repository
+git clone https://github.com/SivanMon/Guest-List-Deploy.git
+cd Guest-List-Deploy
+
+# Initialize Terraform (local state for testing)
+terraform init -backend=false
+
+# Validate configuration  
+terraform validate
+
+# Plan with variables
+terraform plan \
+  -var="environment=dev" \
+  -var="aws_region=us-east-1" \
+  -var="image_tag=dev" \
+  -var="aws_access_key_id=your-key" \
+  -var="aws_secret_access_key=your-secret"
+```
+
+### Manual Deployment Commands
+```bash
+# Deploy specific environment
+gh workflow run clean-terraform.yml \
+  -f action=apply \
+  -f environment=dev
+
+# Destroy environment  
+gh workflow run clean-terraform.yml \
+  -f action=destroy \
+  -f environment=gili
+```
+
+## 🔒 Security & Best Practices
+
+### IAM Security Model
+- **Minimal Permissions:** IAM roles follow least-privilege principle
+- **Role-Based Access:** Separate roles for cluster and node groups
+- **Cross-Account Safety:** Environment isolation through different configurations
 
 ### Network Security
-
-**Security Groups:**
-- Cluster security group: Minimal required access
-- Node security group: Inter-node and cluster communication
-- No unnecessary port exposure
-
-**VPC Configuration:**
-- Private subnets for worker nodes
-- Public subnets only for load balancers
-- NAT gateway for outbound internet access
-
----
-
-## 📊 Cost Optimization
-
-### Resource Sizing
-
-**EKS Cluster:**
-- t3.small instances (2 vCPU, 2GB RAM)
-- Minimum node count: 1
-- Maximum node count: 3 (auto-scaling)
-
-**Cost Estimates** (Monthly, US East 1):
-```
-EKS Control Plane:     ~$72.00  (24/7 management)
-t3.small Nodes (2x):   ~$30.40  (2 × $15.20/month)  
-NAT Gateway:           ~$32.40  (gateway + data transfer)
-Load Balancer:         ~$16.20  (Classic Load Balancer)
-DynamoDB:              ~$0.00   (free tier eligible)
-Total Estimate:        ~$151.00/month
-```
-
-### Cost Optimization Features
-
-- **Single NAT Gateway**: Shared across availability zones
-- **Pay-per-request DynamoDB**: No provisioned capacity
-- **Minimal node group**: Small instance types
-- **Horizontal Pod Autoscaler**: Scale based on CPU usage
-- **Resource limits**: Prevent resource waste
-
----
-
-## 📈 Monitoring and Observability
-
-### Health Checks
-
-**Application Level:**
-- `/health`: Application health with guest count
-- `/healthz`: Basic liveness probe
-- `/readyz`: Readiness probe with dependency checks
-
-**Kubernetes Level:**
-- Readiness probes: Initial 10s delay, 5s intervals
-- Liveness probes: 20s delay, 10s intervals
-- Failure thresholds: 3-6 attempts before restart
-
-### Outputs and Monitoring
-
-**Terraform Outputs:**
 ```hcl
-output "load_balancer_ip" {
-  description = "LoadBalancer external access point"
-  value       = kubernetes_service.guestlist_service.status[0].load_balancer[0].ingress[0].hostname
-}
-
-output "kubectl_config" {
-  description = "Command to configure kubectl access"  
-  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${var.cluster_name}"
-}
+Security Groups:
+├── EKS Cluster: Controlled API server access
+├── Worker Nodes: Inter-node communication only
+├── Load Balancer: HTTP/HTTPS traffic only
+└── Database: Application access only
 ```
 
-### EKS Cluster Logging
+### State Security
+- **Encryption:** S3 state bucket encrypted at rest
+- **Access Control:** IAM-based access to state bucket
+- **Versioning:** State history for rollback capabilities
+- **Locking:** DynamoDB prevents concurrent modifications
 
-**Enabled Log Types:**
-- **API Server**: All API requests and responses
-- **Audit**: Security-relevant chronological records
-- **CloudWatch Integration**: Centralized log management
+### Secret Management
+```yaml
+Kubernetes Secrets:
+├── AWS Credentials: From GitHub environment secrets
+├── Database Config: Environment-specific DynamoDB tables
+├── Application Config: Runtime environment variables
+└── TLS Certificates: Load balancer SSL termination
+```
 
----
+## 📊 Monitoring & Observability
 
-## 🛠️ Troubleshooting Guide
+### Health Check Strategy
+```yaml
+Kubernetes Probes:
+├── Readiness: /readyz endpoint (DynamoDB connectivity)
+├── Liveness: /healthz endpoint (application health)
+└── Startup: Initial deployment validation
+```
 
-### Common Issues
+### Pipeline Monitoring
+- **Deployment Validation:** Post-deploy health verification
+- **Load Balancer Checks:** External endpoint accessibility  
+- **DNS Resolution:** Hostname availability confirmation
+- **Error Reporting:** Failed deployment notifications
 
-**Terraform State Lock:**
+### Cost Monitoring
+```yaml
+Estimated Monthly Costs:
+├── EKS Control Plane: ~$72.00
+├── Worker Nodes (t3.small × 2): ~$30.40
+├── NAT Gateway: ~$32.40  
+├── Load Balancer: ~$16.20
+├── DynamoDB: Pay-per-request
+└── Total Estimate: ~$151.00/month
+```
+
+## 💰 Cost Optimization
+
+### Resource Optimization Strategies
+- **Instance Types:** t3.small for cost-effective computing
+- **Single NAT Gateway:** Shared across private subnets
+- **Auto Scaling:** Dynamic capacity based on demand
+- **Pay-per-Request:** DynamoDB billing optimization
+
+### Development Cost Management
+- **Individual Environments:** Isolated cost tracking
+- **Automated Cleanup:** Destroy workflows for temporary environments  
+- **Resource Tagging:** Cost allocation by student/environment
+
+## 🔧 Troubleshooting
+
+### Common Issues and Solutions
+
+**1. Terraform State Lock:**
 ```bash
-# If state is locked, check DynamoDB
+# Check lock status
 aws dynamodb scan --table-name terraform-locks
 
-# Force unlock if needed (use carefully)
-terraform force-unlock <lock-id>
+# Force unlock (use carefully)
+terraform force-unlock LOCK_ID
 ```
 
-**EKS Cluster Access:**
-```bash
-# Update kubectl configuration
+**2. EKS Access Issues:**
+```bash  
+# Update kubeconfig
 aws eks update-kubeconfig --region us-east-1 --name guestlist-cluster
 
 # Verify cluster access
 kubectl get nodes
-kubectl get pods -n guestlist
 ```
 
-**LoadBalancer Not Accessible:**
+**3. Load Balancer Health Checks:**
 ```bash
 # Check service status
 kubectl get svc -n guestlist
 
-# Check pod status  
+# Verify pod health
 kubectl get pods -n guestlist
-kubectl describe pod -n guestlist <pod-name>
-
-# Check logs
-kubectl logs -n guestlist <pod-name>
+kubectl describe pod <pod-name> -n guestlist
 ```
 
-**Docker Image Pull Issues:**
+**4. DynamoDB Connectivity:**
 ```bash
-# Verify image exists
-docker pull giligalili/guestlistapi:latest
-
-# Check deployment image reference
-kubectl describe deployment -n guestlist guestlist-deployment
+# Test from pod
+kubectl exec -it <pod-name> -n guestlist -- \
+  python -c "import boto3; print(boto3.client('dynamodb').list_tables())"
 ```
 
-### Pipeline Debugging
-
-**Failed Terraform Apply:**
-1. Check AWS credentials are valid
-2. Verify S3 state bucket exists and is accessible  
-3. Ensure DynamoDB lock table exists
-4. Check IAM permissions for EKS operations
-
-**Health Check Failures:**
-1. Verify LoadBalancer DNS resolution
-2. Check security group configurations
-3. Confirm application is running in pods
-4. Validate DynamoDB table access
-
----
-
-## 🚀 Advanced Usage
-
-### Multiple Environment Management
-
-**Deploy Multiple Environments:**
+### Debug Commands
 ```bash
-# Deploy development environment
-terraform workspace select dev || terraform workspace new dev
-terraform apply -var="environment=dev"
+# Pipeline Logs
+gh run list --workflow=clean-terraform.yml
+gh run view <run-id> --log
 
-# Deploy staging environment  
-terraform workspace select staging || terraform workspace new staging
-terraform apply -var="environment=staging"
-```
-
-### Custom Configuration
-
-**Override Default Settings:**
-```bash
-# Custom instance types
-terraform apply -var="node_instance_type=t3.medium" \
-  -var="node_desired_capacity=3"
-
-# Custom region deployment
-terraform apply -var="aws_region=us-west-2" \
-  -var="environment=west-coast"
-```
-
-### Blue-Green Deployment
-
-**Rolling Updates:**
-- Kubernetes deployment strategy: RollingUpdate
-- Max surge: 25% additional pods during update
-- Max unavailable: 0% (zero downtime updates)
-
----
-
-## 🔄 Deployment Workflow
-
-### Development Workflow
-
-1. **Feature Development**: Work in `{name}-feature` branches
-2. **Local Testing**: Test application changes locally
-3. **CI Pipeline**: Automated Docker build and testing  
-4. **Infrastructure Deploy**: Manual trigger or push to main
-5. **Validation**: Health checks and smoke testing
-6. **Production**: Merge to main for production deployment
-
-### Environment Promotion
-
-```bash
-# Development → Staging
-git checkout staging
-git merge dev
-git push origin staging
-
-# Staging → Production  
-git checkout main
-git merge staging
-git push origin main
-```
-
----
-
-## 📚 Additional Resources
-
-### Useful Commands
-
-**Cluster Management:**
-```bash
-# Get cluster information
-kubectl cluster-info
-kubectl get nodes -o wide
-
-# Application management
-kubectl get all -n guestlist
+# Kubernetes Debugging
 kubectl logs -f deployment/guestlist-deployment -n guestlist
+kubectl port-forward svc/guestlist-service 8080:9999 -n guestlist
 
-# Resource monitoring
-kubectl top nodes
-kubectl top pods -n guestlist
-```
-
-**Terraform Operations:**
-```bash
-# View current state
+# Terraform Debugging
 terraform show
 terraform state list
-
-# Import existing resources (if needed)
-terraform import aws_s3_bucket.tf_state bucket-name
-
-# Clean up
-terraform destroy -auto-approve
+terraform output
 ```
 
-### Related Documentation
+## 📈 Future Enhancements
 
-- [Guest List API Repository](https://github.com/giligalili/Guest-List-API)
-- [AWS EKS Documentation](https://docs.aws.amazon.com/eks/)
-- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
+### Monitoring Integration
+- **Prometheus/Grafana:** Application and infrastructure metrics
+- **ELK Stack:** Centralized logging and analytics
+- **CloudWatch Integration:** AWS native monitoring
+
+### Security Enhancements  
+- **Pod Security Standards:** Kubernetes security policies
+- **Network Policies:** Microsegmentation within cluster
+- **Secrets Management:** AWS Secrets Manager integration
+- **Image Scanning:** Container vulnerability assessment
+
+### Infrastructure Evolution
+- **Multi-Region Deployment:** Geographic distribution
+- **GitOps Integration:** ArgoCD for Kubernetes deployments  
+- **Service Mesh:** Istio for advanced traffic management
+- **Infrastructure Testing:** Terratest automation
 
 ---
 
-## 📄 License
+**Repository:** https://github.com/SivanMon/Guest-List-Deploy  
+**API Repository:** https://github.com/SivanMon/Guest-List-API  
+**Live Demo:** Available through environment-specific load balancers
 
-This infrastructure code was created as part of our DevSecOps course final project. All team members contributed to the design and implementation.
-
----
-
-**Ready to deploy your Guest List API to the cloud? Follow this guide and you'll have a production-ready Kubernetes cluster running on AWS in minutes! 🚀**
+For API documentation and application details, see the [Guest-List-API](https://github.com/SivanMon/Guest-List-API) repository.
