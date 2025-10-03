@@ -100,25 +100,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Get the newest dev-* tag from Docker Hub (public)
-          TAG=$(curl -fsSL 'https://hub.docker.com/v2/repositories/sivanmonshi/guestlistapi/tags?page_size=100&ordering=last_updated' \
-            | python3 - <<'PY'
-              import sys,json
-              data=json.load(sys.stdin)
-              for r in data.get('results', []):
-                  n=r.get('name','')
-                  if n.startswith('dev-'):
-                      print(n); break
-              PY
-              )
-                  if [[ -n "${TAG}" ]]; then
-                    echo "Using immutable tag: ${TAG}"
-                    # Override the tag your template/TF already uses
-                    echo "IMAGE_TAG_PREFIX=${TAG}"        >> "$GITHUB_ENV"
-                    echo "image_tag_prefix=${TAG}"        >> "$GITHUB_OUTPUT"
-                  else
-                    echo "No dev-* tag found; falling back to :dev"
-                  fi
+          TAG="$(
+            curl -fsSL 'https://hub.docker.com/v2/repositories/sivanmonshi/guestlistapi/tags?page_size=100&ordering=last_updated' \
+            | python3 -c 'import sys,json; d=json.load(sys.stdin); print(next((r.get("name","") for r in d.get("results",[]) if r.get("name","").startswith("dev-")), ""))'
+          )"
+          if [[ -n "$TAG" ]]; then
+            echo "Using immutable tag: $TAG"
+            echo "IMAGE_TAG_PREFIX=$TAG" >> "$GITHUB_ENV"
+            echo "image_tag_prefix=$TAG" >> "$GITHUB_OUTPUT"
+          else
+            echo "No dev-* tag found; falling back to :dev"
+          fi
 
       - name: Show resolved values
         run: |
