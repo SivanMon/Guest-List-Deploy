@@ -215,6 +215,14 @@ jobs:
           repo="${IMAGE_REPO}"
           prefix="${IMAGE_TAG_PREFIX}"
           tag=""
+
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" && "${ENVIRONMENT}" == "dev" ]]; then
+            latest="$(curl -fsSL "https://hub.docker.com/v2/repositories/${repo}/tags?page_size=100&ordering=last_updated" \
+              | jq -r '.results[].name' | grep '^dev-' | head -n1)"
+            if [[ -n "${latest}" ]]; then
+              prefix="${latest}"
+            fi
+          fi
           case "${ENVIRONMENT}" in
             sivan|dvir|sahar|gili)
               # Latest tag that starts with "<student>-feature-"
