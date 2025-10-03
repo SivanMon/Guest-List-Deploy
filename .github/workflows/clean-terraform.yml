@@ -94,6 +94,32 @@ jobs:
           echo "TF_STATE_BUCKET=${TF_STATE_BUCKET}" >> "$GITHUB_ENV"
           echo "TF_STATE_KEY=${TF_STATE_KEY}"       >> "$GITHUB_ENV"
 
+      - name: Prefer immutable dev-SHA tag for manual dev runs
+        if: ${{ github.event_name == 'workflow_dispatch' && steps.setvars.outputs.environment == 'dev' }}
+        id: pin_dev_sha
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Get the newest dev-* tag from Docker Hub (public)
+          TAG=$(curl -fsSL 'https://hub.docker.com/v2/repositories/sivanmonshi/guestlistapi/tags?page_size=100&ordering=last_updated' \
+            | python3 - <<'PY'
+              import sys,json
+              data=json.load(sys.stdin)
+              for r in data.get('results', []):
+                  n=r.get('name','')
+                  if n.startswith('dev-'):
+                      print(n); break
+              PY
+              )
+                  if [[ -n "${TAG}" ]]; then
+                    echo "Using immutable tag: ${TAG}"
+                    # Override the tag your template/TF already uses
+                    echo "IMAGE_TAG_PREFIX=${TAG}"        >> "$GITHUB_ENV"
+                    echo "image_tag_prefix=${TAG}"        >> "$GITHUB_OUTPUT"
+                  else
+                    echo "No dev-* tag found; falling back to :dev"
+                  fi
+
       - name: Show resolved values
         run: |
           echo "ENVIRONMENT:      ${{ steps.setvars.outputs.environment }}"
